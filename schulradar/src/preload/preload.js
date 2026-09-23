@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('schulradar', {
   getTimetable: (weekStart) => ipcRenderer.invoke('timetable:get', weekStart),
   teamsGraphConnect: () => ipcRenderer.invoke('teams:graph-connect'),
   exportDiagnostics: (source) => ipcRenderer.invoke('diag:export', source || null),
+  saveCalendarFile: (name, text, open) => ipcRenderer.invoke('calendar:save', name, text, Boolean(open)),
   openDataFolder: () => ipcRenderer.invoke('data:open-folder'),
   resetData: () => ipcRenderer.invoke('data:reset'),
   setTheme: (theme) => ipcRenderer.invoke('theme:set', theme),

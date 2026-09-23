@@ -8,6 +8,7 @@ const { toUntisDate, addDays, startOfDay, startOfWeek } = require('../../src/mai
 const WEBUNTIS = { user: 'MaxM', secret: 'JBSWY3DPEHPK3PXP', school: 'htl-hl', session: 'wu-session-1' };
 const MOODLE = { token: crypto.createHash('md5').update('moodle-token').digest('hex'), session: 'ok' };
 const LETTO = { user: 'max', pass: 'geheim' };
+const LMS = { user: 'max.muster', pass: 'lms-geheim' };
 
 function cookies(req) {
   return Object.fromEntries(
@@ -204,6 +205,68 @@ async function letto(req, res, url, raw, now) {
   return html(res, '<h1>LeTTo Login</h1><form method="post" action="/letto/login"><input type="text" name="username"><input type="password" name="password"><button type="submit">Anmelden</button></form>');
 }
 
+// LMS.at (nachgebaut wie .LRN): Anmeldung, Startseite mit Menü, Aufgaben-Tabelle (lädt nach), Terminliste
+function fmtLms(ms, time = '') {
+  const d = new Date(ms);
+  const wd = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][d.getDay()];
+  return `${wd}, ${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}${time ? `, ${time}` : ''}`;
+}
+
+function lms(req, res, url, raw, now) {
+  const p = url.pathname.replace(/^\/lms/, '') || '/';
+  const loggedIn = cookies(req).lms === 'ok';
+  const today = startOfDay(now);
+  if (p === '/register/' && req.method === 'POST') {
+    const form = new URLSearchParams(raw);
+    if (form.get('username') === LMS.user && form.get('password') === LMS.pass) {
+      return redirect(res, '/lms/dotlrn/', { 'Set-Cookie': 'lms=ok; Path=/lms' });
+    }
+    return redirect(res, '/lms/');
+  }
+  if (!loggedIn) {
+    if (p !== '/') return redirect(res, '/lms/');
+    return html(
+      res,
+      '<h1>LMS.at – Lernen mit System</h1><form method="post" action="/lms/register/"><label>Benutzername <input type="text" name="username"></label>' +
+        '<label>Passwort <input type="password" name="password"></label><button type="submit">Anmelden</button></form><a href="#ms">Mit Microsoft anmelden</a>'
+    );
+  }
+  const menu =
+    '<nav><a href="/lms/dotlrn/">Startseite</a> <a href="/lms/dotlrn/kurse">Meine Kurse</a> <a href="/lms/dotlrn/aufgaben">Aufgaben</a> ' +
+    '<a href="/lms/dotlrn/kalender?view=list">Termine</a> <a href="/lms/logout">Abmelden</a></nav>';
+  if (p === '/' || p === '/dotlrn/') {
+    return html(res, `${menu}<h1>Mein Bereich</h1><div class="news-item"><h3>Willkommen</h3><p>Neuigkeit vom 01.09.2026 – Schulstart für alle Klassen</p></div>`);
+  }
+  if (p === '/dotlrn/aufgaben') {
+    const rows = [
+      ['Referat Energiewende – Handout', '4AHIT GGP', fmtLms(addDays(today, 4), '23:59'), 'offen'],
+      ['Protokoll Messtechnik', '4AHIT MTRS', fmtLms(addDays(today, -2)), 'abgegeben']
+    ];
+    return html(
+      res,
+      `${menu}<h1>Aufgaben</h1><div id="list">Lade …</div><script>
+        const rows = ${JSON.stringify(rows)};
+        setTimeout(() => {
+          document.getElementById('list').innerHTML = '<table><thead><tr><th>Aufgabe</th><th>Kurs</th><th>Abgabetermin</th><th>Status</th></tr></thead><tbody>' +
+            rows.map(r => '<tr>' + r.map((c, i) => '<td>' + (i === 0 ? '<a href="/lms/dotlrn/aufgabe?id=' + encodeURIComponent(c) + '">' + c + '</a>' : c) + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
+        }, 700);
+      </script>`
+    );
+  }
+  if (p === '/dotlrn/kalender') {
+    return html(
+      res,
+      `${menu}<h1>Termine</h1><ul class="cal-list">
+        <li class="cal-item"><strong>Schularbeit Mathematik</strong> <span>${fmtLms(addDays(today, 6), '08:00 - 09:40')}</span> Raum 204</li>
+        <li class="cal-item"><strong>Test Wirtschaft</strong> <span>${fmtLms(addDays(today, 3), '09:45–10:35')}</span></li>
+        <li class="cal-item"><strong>Exkursion Technisches Museum</strong> <span>${fmtLms(addDays(today, 10))}</span></li>
+        <li class="cal-item"><strong>Neue Unterlagen im Kurs</strong> <span>${fmtLms(addDays(today, -1))}</span></li>
+      </ul>`
+    );
+  }
+  return html(res, `${menu}<p>Seite nicht vorhanden</p>`, 404);
+}
+
 function teams(req, res, url, raw, now, port) {
   if (url.pathname === '/teams/app') {
     // wie das neue Teams: die Aufgaben laden erst, wenn links „Zuweisungen“ angeklickt wird
@@ -251,6 +314,7 @@ function start(port = 0) {
       if (url.pathname.startsWith('/WebUntis/')) return webuntis(req, res, url, raw, now);
       if (url.pathname.startsWith('/moodle/')) return moodle(req, res, url, raw, now);
       if (url.pathname.startsWith('/letto')) return await letto(req, res, url, raw, now);
+      if (url.pathname.startsWith('/lms')) return lms(req, res, url, raw, now);
       if (teams(req, res, url, raw, now, server.address().port) !== null) return;
       if (!res.headersSent) html(res, 'nicht gefunden', 404);
     } catch (err) {
@@ -260,6 +324,6 @@ function start(port = 0) {
   return new Promise((resolve) => server.listen(port, () => resolve({ port: server.address().port, close: () => server.close(), log })));
 }
 
-module.exports = { start, WEBUNTIS, MOODLE, LETTO };
+module.exports = { start, WEBUNTIS, MOODLE, LETTO, LMS };
 
 if (require.main === module) start(Number(process.argv[2]) || 8765).then((s) => console.log(`Mock-Server auf Port ${s.port}`));

@@ -1,6 +1,7 @@
 // Darstellung eines einzelnen Eintrags (Liste, Tagesansicht, Detail-Dialog)
 import { h, icon } from '../dom.js';
 import * as L from '../logic.js';
+import { calendarButton } from './calendar-menu.js';
 
 export function sourceBadge(source) {
   const meta = L.SOURCE_META[source] || L.SOURCE_META.own;
@@ -82,6 +83,8 @@ export function details(item, ctx) {
   if (item.attachments) fact('Anhänge', `${item.attachments}`);
 
   const actions = [];
+  const cal = calendarButton(item, ctx);
+  if (cal) actions.push(cal);
   if (item.url) {
     actions.push(
       h('button', { class: 'btn', onclick: () => ctx.api.openUrl(item.url, false) }, icon('open'), 'Öffnen'),

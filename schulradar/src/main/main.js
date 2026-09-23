@@ -289,6 +289,21 @@ function registerIpc() {
     return { ok: true, path: filePath };
   });
 
+  ipcMain.handle('calendar:save', async (_e, name, text, open) => {
+    const safe = String(name || 'schulradar.ics').replace(/[\\/:*?"<>|]/g, '_');
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: 'Kalenderdatei speichern',
+      defaultPath: path.join(app.getPath('downloads'), safe.endsWith('.ics') ? safe : `${safe}.ics`),
+      filters: [{ name: 'Kalender (iCalendar)', extensions: ['ics'] }]
+    });
+    if (canceled || !filePath) return { ok: false };
+    fs.writeFileSync(filePath, String(text || ''), 'utf8');
+    // einzelner Termin: gleich im Standard-Kalender (z. B. Outlook) öffnen
+    if (open) shell.openPath(filePath);
+    else shell.showItemInFolder(filePath);
+    return { ok: true, path: filePath };
+  });
+
   ipcMain.handle('data:open-folder', () => shell.openPath(app.getPath('userData')));
 
   ipcMain.handle('data:reset', async () => {

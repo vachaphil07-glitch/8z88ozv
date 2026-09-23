@@ -1,9 +1,9 @@
 # Schulradar
 
-**Alle Aufgaben, Abgaben und Tests aus WebUntis, MS Teams, Letto und Eduvidual in einer Übersicht.**
+**Alle Aufgaben, Abgaben und Tests aus WebUntis, MS Teams, Letto, Eduvidual und LMS.at in einer Übersicht.**
 
-Bei uns in der Schule kommen Aufgaben, Aufträge und Testtermine über vier verschiedene Plattformen.
-Um sicher zu sein, dass wirklich alles erledigt ist, musste man bisher alle vier einzeln durchsehen.
+Bei uns in der Schule kommen Aufgaben, Aufträge und Testtermine über mehrere verschiedene Plattformen.
+Um sicher zu sein, dass wirklich alles erledigt ist, musste man bisher alle einzeln durchsehen.
 Schulradar ist eine App für Windows und Android, die das automatisch erledigt: Sie holt alle Einträge ab,
 zeigt sie in **einer** Liste sortiert nach Fälligkeit, erkennt, was schon abgegeben ist, und erinnert
 rechtzeitig an Abgaben und Tests.
@@ -28,6 +28,9 @@ Voreingestellt für die **HTL Hollabrunn**; für andere Schulen lassen sich alle
 - **Wochen- und Monatsansicht**, in der Woche auf Wunsch mit dem Stundenplan aus WebUntis
   als Zeitraster wie in WebUntis (Doppelstunden, Gruppen, Entfall, Änderung, Prüfung).
 - **Eigene Aufgaben** für Dinge, die nur mündlich angesagt wurden.
+- **In den Kalender übernehmen**: Bei jedem Eintrag unter **Kalender** → Google Kalender, Outlook
+  (Schulkonto), Yahoo, Kalenderdatei (.ics) oder am Handy direkt die Kalender-App. Unter
+  *Einstellungen → Kalender* lassen sich alle kommenden Tests und Schularbeiten auf einmal exportieren.
 - **Erinnerungen** als Windows-Benachrichtigung: am Vorabend von Tests und ganztägigen Abgaben,
   1 Tag und 3 Stunden vor Abgaben mit Uhrzeit, jeden Morgen eine kurze Übersicht. Alles einstellbar.
 - **Läuft im Hintergrund**: startet mit Windows, ruft alle 30 Minuten ab und sitzt als Symbol im Infobereich.
@@ -49,7 +52,7 @@ mit Beispieldaten ausprobieren, ohne sich irgendwo anzumelden.
 
 ## Am Handy (Android)
 
-Schulradar gibt es auch als Android-App – mit allem wie am PC: eigene Anmeldung bei allen vier Plattformen,
+Schulradar gibt es auch als Android-App – mit allem wie am PC: eigene Anmeldung bei allen Plattformen,
 Liste, Tagesansicht mit Stundenplan, Monat, eigene Aufgaben, Abhaken und Erinnerungen.
 
 <p>
@@ -121,6 +124,32 @@ und `EduRoster.ReadBasic` samt Administratorzustimmung.
 Letto meldet nach 20 Minuten automatisch ab. Damit der Abruf im Hintergrund trotzdem klappt, kann man
 Benutzername und Passwort für Letto speichern. Wer sich bei Letto mit Microsoft anmeldet, lässt die Felder
 leer: Schulradar nutzt dann die Microsoft-Anmeldung.
+
+### LMS.at: Aufgaben und Termine
+1. **Anmelden** klicken und bei LMS.at einloggen (LMS-Benutzername oder „Mit Microsoft anmelden“).
+2. Die Seite mit den **Aufgaben** öffnen und, falls es eine gibt, auch die Seite mit den **Terminen**
+   bzw. dem Kalender. Erkennt Schulradar dort Einträge mit Datum, merkt es sich die Seite (höchstens drei)
+   und meldet sich unten im Fenster.
+3. Fenster schließen (am Handy: **Fertig**).
+
+Ohne gemerkte Seite sucht Schulradar selbst nach Menüpunkten wie „Aufgaben“, „Termine“ oder „Kalender“.
+Tests, Schularbeiten und Lernzielkontrollen werden anhand des Titels erkannt und wie Prüfungen hervorgehoben.
+Wie bei Letto kann man Benutzername und Passwort speichern, damit der Abruf nach Ablauf der Sitzung
+weiterläuft. LMS.at hat keine offizielle Schnittstelle für Schüler. Klappt die Erkennung bei euch nicht,
+bitte unter *Plattformen → LMS.at* die **Diagnose** speichern und schicken.
+
+## Kalender: Tests & Schularbeiten übernehmen
+
+- **Einzelner Termin:** Eintrag antippen → **Kalender** → **Google Kalender**, **Outlook (Schulkonto)**,
+  **Yahoo Kalender** oder **Kalender (.ics)**. Google, Outlook und Yahoo öffnen sich im Browser mit
+  bereits ausgefülltem Termin, man muss nur noch speichern. Am Handy trägt **Kalender-App am Handy** den
+  Termin direkt in die Kalender-App ein, z. B. Google Kalender.
+- **Alle auf einmal:** *Einstellungen → Kalender → Exportieren* erstellt eine Datei mit allen kommenden
+  Tests, Schularbeiten und Terminen, auf Wunsch auch mit allen offenen Abgaben. In Google Kalender importiert
+  man sie am PC unter *calendar.google.com → Einstellungen → Importieren & Exportieren*. Outlook öffnet
+  die Datei mit einem Doppelklick.
+- Tests und Schularbeiten bekommen eine Erinnerung am Vorabend um 18 Uhr (in .ics-Dateien). Abgaben
+  werden als kurzer Termin eingetragen, der zur Abgabezeit endet.
 
 ## Datenschutz & Sicherheit
 
@@ -204,9 +233,9 @@ src/main/            Hauptprozess (Node)
   reminders.js       Erinnerungen & Morgen-Übersicht
   web.js             gemeinsame Browser-Sitzung, unsichtbare Fenster, JSON-Mitschnitt (DevTools-Protokoll)
   login.js           Anmeldefenster (Ablauf gemeinsam mit dem Handy: login-flow.js)
-  connectors/        webuntis.js, eduvidual.js, teams.js, letto.js (+ demo.js)
+  connectors/        webuntis.js, eduvidual.js, teams.js, letto.js, lms.js (+ demo.js, webpage.js)
 src/preload/         sichere Brücke zur Oberfläche
-src/renderer/        Oberfläche (ES-Module): app.js, logic.js, views/*
+src/renderer/        Oberfläche (ES-Module): app.js, logic.js, calendar.js (Kalender-Export), views/*
 mobile/              Android-App: core/ (Handy-Kern), android/ (Projekt + SchulradarNativePlugin.java)
 test/                node:test-Tests, test/e2e/ mit Mock-Server
 ```
@@ -217,6 +246,7 @@ test/                node:test-Tests, test/e2e/ mit Mock-Server
 | Eduvidual | Browser-Login → Moodle-App-Token über `admin/tool/mobile/launch.php` | Moodle-Webservice: `core_calendar_get_action_events_by_timesort`, `core_calendar_get_calendar_monthly_view` (Fallback: Browser-Sitzung + `lib/ajax/service.php`) |
 | MS Teams | Browser-Login (Microsoft) | Aufgaben-App unsichtbar laden und JSON-Antworten mitlesen; optional Microsoft Graph `education/me/assignments` |
 | Letto | Browser-Login, optional gespeichertes Passwort / Microsoft | Schüler-Dashboard („Offene“ und „Nicht gestartete Aktivitäten“) auslesen |
+| LMS.at | Browser-Login, optional gespeichertes Passwort / Microsoft | gemerkte Seiten mit Aufgaben/Terminen auslesen (Tabellen und Listen mit Datum) |
 
 Nur für Tests gibt es die Umgebungsvariablen `SCHULRADAR_USERDATA` (anderer Datenordner),
 `SCHULRADAR_SCREENSHOT` / `SCHULRADAR_VIEWS` (Screenshots speichern) und `SCHULRADAR_E2E` (Abruf ausführen

@@ -2,12 +2,14 @@
 import { h, clear, icon } from '../dom.js';
 import * as L from '../logic.js';
 import { details, statusPill, sourceBadge } from './item.js';
+import { closeCalendarMenuIfDetached } from './calendar-menu.js';
 
 const modalRoot = () => document.getElementById('modal-root');
 
 export function closeModal() {
   clear(modalRoot());
   document.body.classList.remove('has-modal');
+  closeCalendarMenuIfDetached();
 }
 
 export function openModal(content, { wide = false, onClose } = {}) {
@@ -209,7 +211,7 @@ export function openOnboarding(ctx) {
       { class: 'onboarding' },
       h('div', { class: 'onb-logo' }, icon('radar')),
       h('h2', {}, 'Willkommen bei Schulradar'),
-      h('p', { class: 'lead' }, 'Alle Aufgaben, Abgaben und Tests aus WebUntis, MS Teams, Letto und Eduvidual – in einer Liste. Nie wieder vier Plattformen durchklicken.'),
+      h('p', { class: 'lead' }, 'Alle Aufgaben, Abgaben und Tests aus WebUntis, MS Teams, Letto, Eduvidual und LMS.at – in einer Liste. Nie wieder alle Plattformen einzeln durchklicken.'),
       h(
         'ol',
         { class: 'onb-steps' },

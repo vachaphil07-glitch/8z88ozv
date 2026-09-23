@@ -336,6 +336,40 @@ async function exportDiagnostics(source) {
   }
 }
 
+// ---------------------------------------------------------------- Kalender
+
+/** .ics-Datei im Cache ablegen und über das Teilen-Menü anbieten (Kalender-App, Mail, Drive …) */
+async function saveCalendarFile(name, text) {
+  const file = String(name || 'schulradar.ics').replace(/[^A-Za-z0-9._-]/g, '_');
+  try {
+    const { uri } = await Filesystem.writeFile({ path: file, data: String(text || ''), directory: Directory.Cache, encoding: Encoding.UTF8 });
+    await Share.share({ title: 'Termine für den Kalender', dialogTitle: 'In Kalender übernehmen', files: [uri] });
+    return { ok: true, path: file };
+  } catch (err) {
+    if (/cancel/i.test(String(err && err.message))) return { ok: false };
+    toast(`Kalender: ${err.message}`, 'error');
+    return { ok: false };
+  }
+}
+
+/** Termin in der Kalender-App des Handys anlegen (öffnet die App mit ausgefüllten Feldern) */
+async function addToDeviceCalendar(ev) {
+  try {
+    await Native.calendarInsert({
+      title: ev.title,
+      description: ev.description || '',
+      location: ev.location || '',
+      start: ev.start,
+      end: ev.end,
+      allDay: Boolean(ev.allDay)
+    });
+    return { ok: true };
+  } catch (err) {
+    toast(String((err && err.message) || err) || 'Keine Kalender-App gefunden.', 'error');
+    return { ok: false };
+  }
+}
+
 async function resetData() {
   await ready;
   const ok = window.confirm(
@@ -389,6 +423,8 @@ window.schulradar = {
   getTimetable: call((weekStart) => ctrl.timetable(weekStart)),
   teamsGraphConnect: call(() => ctrl.graphConnect((payload) => emit('graph-code', payload))),
   exportDiagnostics,
+  saveCalendarFile,
+  addToDeviceCalendar,
   openDataFolder: async () => toast('Auf dem Handy liegen die Daten im geschützten App-Speicher.'),
   resetData,
   setTheme: async (effective) => {

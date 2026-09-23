@@ -26,6 +26,9 @@ const plugins = {
     clearOrigins: noop,
     clearAllData: async () => localStorage.clear(),
     openExternal: async ({ url }) => window.open(url, '_blank'),
+    calendarInsert: async (ev) => {
+      window.__kalender = ev;
+    },
     addListener: listener
   },
   SystemBars: { setStyle: noop }

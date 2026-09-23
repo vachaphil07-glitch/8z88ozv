@@ -7,6 +7,8 @@ import { renderMonth } from './views/month.js';
 import { renderPlatforms } from './views/platforms.js';
 import { renderSettings } from './views/settings.js';
 import { openTaskDialog, openItemDialog, openOnboarding, confirmDialog, closeModal, toast } from './views/dialogs.js';
+import { closeCalendarMenu, closeCalendarMenuIfDetached } from './views/calendar-menu.js';
+import { icsCalendar, upcomingEvents } from './calendar.js';
 
 const api = window.schulradar;
 
@@ -164,6 +166,24 @@ actions.graphConnect = () => {
 };
 
 actions.showOnboarding = () => openOnboarding(ctx);
+
+/** Kalenderdatei (.ics) speichern bzw. am Handy teilen */
+actions.saveCalendar = async (events, fileName, { open = false } = {}) => {
+  if (!events.length) {
+    toast('Keine kommenden Termine zum Exportieren.');
+    return;
+  }
+  const res = await api.saveCalendarFile(fileName, icsCalendar(events), open);
+  if (res && res.ok && state.platform !== 'android') {
+    toast(events.length === 1 ? 'Kalenderdatei gespeichert.' : `${events.length} Termine als Kalenderdatei gespeichert.`, 'ok');
+  }
+};
+
+actions.exportAllToCalendar = (withTasks) => {
+  const events = upcomingEvents(state.items, state.local, ctx.now(), { withTasks });
+  const name = withTasks ? 'schulradar-termine-und-abgaben.ics' : 'schulradar-tests-und-termine.ics';
+  return actions.saveCalendar(events, name);
+};
 
 function shorten(text, max = 50) {
   const t = String(text || '');
@@ -336,6 +356,7 @@ function renderView({ resetScroll = false } = {}) {
     }
   }
   view.scrollTop = scroll;
+  closeCalendarMenuIfDetached();
 }
 
 function render(opts = {}) {
@@ -397,6 +418,16 @@ api.onNavigate((view) => {
   } else if (view === 'expand:first') {
     const first = document.querySelector('.item[data-id]');
     if (first) actions.toggleExpand(first.dataset.id);
+  } else if (view === 'calendar:first') {
+    const first = document.querySelector('.item.is-exam[data-id]') || document.querySelector('.item[data-id]');
+    if (first) {
+      actions.toggleExpand(first.dataset.id);
+      setTimeout(() => {
+        const btn = document.querySelector('.item.is-expanded [aria-haspopup=menu]');
+        btn?.scrollIntoView({ block: 'center' });
+        setTimeout(() => btn?.click(), 150);
+      }, 100);
+    }
   } else if (view === 'dialog:task') {
     actions.newTask();
   } else if (view === 'dialog:onboarding') {
@@ -441,6 +472,7 @@ document.addEventListener('keydown', (e) => {
 // Handy: Zurück-Taste schließt erst Dialoge und Details, dann geht's zur Übersicht
 if (api.onBack) {
   api.onBack(() => {
+    if (closeCalendarMenu()) return true;
     if (document.body.classList.contains('has-modal')) {
       closeModal();
       return true;

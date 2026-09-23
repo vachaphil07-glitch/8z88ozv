@@ -113,6 +113,23 @@ export function renderSettings(root, ctx) {
         row('Demo-Daten anzeigen', 'Beispieldaten zum Ausprobieren – echte Daten werden dabei nicht abgerufen.', toggle(s.demo || ctx.state.forcedDemo, (v) => ctx.actions.setDemo(v), 'Demo'))
       ),
       section(
+        'Kalender',
+        'calendar',
+        row(
+          'Tests & Schularbeiten exportieren',
+          phone
+            ? 'Alle kommenden Tests, Schularbeiten und Termine als Kalenderdatei (.ics) teilen – z. B. an die Kalender-App oder an dich selbst.'
+            : 'Alle kommenden Tests, Schularbeiten und Termine als Kalenderdatei (.ics) – zum Importieren in Outlook oder Google Kalender (calendar.google.com → Einstellungen → Importieren).',
+          h('button', { class: 'btn', onclick: () => ctx.actions.exportAllToCalendar(false) }, icon('calendar'), 'Exportieren')
+        ),
+        row(
+          'Mit allen offenen Abgaben',
+          'Wie oben, zusätzlich jede offene Abgabe als kurzer Termin zur Abgabezeit.',
+          h('button', { class: 'btn', onclick: () => ctx.actions.exportAllToCalendar(true) }, icon('calendar'), 'Alles exportieren')
+        ),
+        h('p', { class: 'muted small set-note' }, 'Einzelne Termine: Eintrag öffnen → „Kalender“ → Google Kalender, Outlook, Yahoo oder .ics.')
+      ),
+      section(
         'Daten & Hilfe',
         'folder',
         phone ? null : row('Datenordner', 'Hier liegen Aufgaben, Häkchen und Einstellungen (JSON-Datei).', h('button', { class: 'btn', onclick: () => ctx.api.openDataFolder() }, icon('folder'), 'Öffnen')),

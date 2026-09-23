@@ -1,10 +1,12 @@
 package at.schulradar.app;
 
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.CalendarContract;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
@@ -294,6 +296,34 @@ public class SchulradarNativePlugin extends Plugin {
             call.resolve();
         } catch (Exception e) {
             call.reject(e.getMessage());
+        }
+    }
+
+    /** Termin in der Kalender-App anlegen (z. B. Google Kalender) – ohne Kalender-Berechtigung. */
+    @PluginMethod
+    public void calendarInsert(PluginCall call) {
+        Double start = call.getDouble("start");
+        Double end = call.getDouble("end");
+        if (start == null) {
+            call.reject("Termin ohne Beginn");
+            return;
+        }
+        long begin = start.longValue();
+        long finish = end == null ? begin + 3600000L : end.longValue();
+        Intent i = new Intent(Intent.ACTION_INSERT)
+            .setData(CalendarContract.Events.CONTENT_URI)
+            .putExtra(CalendarContract.Events.TITLE, call.getString("title", ""))
+            .putExtra(CalendarContract.Events.DESCRIPTION, call.getString("description", ""))
+            .putExtra(CalendarContract.Events.EVENT_LOCATION, call.getString("location", ""))
+            .putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
+            .putExtra(CalendarContract.EXTRA_EVENT_END_TIME, finish)
+            .putExtra(CalendarContract.EXTRA_EVENT_ALL_DAY, Boolean.TRUE.equals(call.getBoolean("allDay", false)))
+            .putExtra(CalendarContract.Events.AVAILABILITY, CalendarContract.Events.AVAILABILITY_BUSY);
+        try {
+            getActivity().startActivity(i);
+            call.resolve();
+        } catch (ActivityNotFoundException e) {
+            call.reject("Keine Kalender-App gefunden. Bitte „Kalender (.ics)“ verwenden.");
         }
     }
 

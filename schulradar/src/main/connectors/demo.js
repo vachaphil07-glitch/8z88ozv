@@ -31,7 +31,10 @@ function demoItems(now = Date.now()) {
     { id: 'demo:ed:1', source: 'eduvidual', type: 'assignment', module: 'assign', title: 'Abgabe: SQL-Übungsblatt 2', course: 'Datenbanken 4AHIT', subject: 'DBI', due: t(1, 18, 0), allDay: false, status: 'open' },
     { id: 'demo:ed:2', source: 'eduvidual', type: 'quiz', module: 'quiz', title: 'Selbsttest Kapitel 4', course: 'Englisch 4AHIT', subject: 'E', due: t(7, 23, 59), allDay: false, status: 'open' },
     { id: 'demo:ed:3', source: 'eduvidual', type: 'assignment', module: 'assign', title: 'Lesetagebuch Woche 3', course: 'Deutsch 4AHIT', subject: 'D', due: t(8, 23, 59), allDay: false, status: 'submitted' },
-    { id: 'demo:ed:4', source: 'eduvidual', type: 'event', title: 'Exkursion Technisches Museum', course: 'Jahrgang 4', subject: '', due: t(10, 8, 0), allDay: false, status: 'open' }
+    { id: 'demo:ed:4', source: 'eduvidual', type: 'event', title: 'Exkursion Technisches Museum', course: 'Jahrgang 4', subject: '', due: t(10, 8, 0), allDay: false, status: 'open' },
+    // LMS.at
+    { id: 'demo:lms:1', source: 'lms', type: 'assignment', title: 'Referat Energiewende – Handout hochladen', subject: 'GGP', due: t(4, 23, 59), allDay: false, status: 'open' },
+    { id: 'demo:lms:2', source: 'lms', type: 'exam', examType: 'Test', title: 'Test', subject: 'WIR', room: 'R 107', due: t(8, 9, 45), end: t(8, 10, 35), allDay: false, status: 'open', description: 'Stoff: Kostenrechnung, Kapitel 2' }
   ].map((it) => ({ url: null, description: '', ...it, demo: true }));
 }
 

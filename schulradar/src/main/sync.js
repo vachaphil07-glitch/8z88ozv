@@ -129,6 +129,7 @@ class SyncManager {
     const browserBased = (async () => {
       if (enabled('teams')) await this.syncOne('teams');
       if (enabled('letto')) await this.syncOne('letto');
+      if (enabled('lms')) await this.syncOne('lms');
     })();
     await Promise.all([enabled('webuntis') && this.syncOne('webuntis'), enabled('eduvidual') && this.syncOne('eduvidual'), browserBased]);
     this.store.prune();

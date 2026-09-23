@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const presets = require('./presets');
 
-const SOURCES = ['webuntis', 'teams', 'letto', 'eduvidual'];
+const SOURCES = ['webuntis', 'teams', 'letto', 'eduvidual', 'lms'];
 
 function defaultData() {
   return {
@@ -52,6 +52,12 @@ function defaultData() {
         eduvidual: {
           enabled: true,
           url: presets.eduvidual.url
+        },
+        lms: {
+          enabled: true,
+          url: presets.lms.url,
+          pages: [], // Seiten mit Aufgaben/Terminen (werden im Anmeldefenster erkannt)
+          username: ''
         }
       }
     },

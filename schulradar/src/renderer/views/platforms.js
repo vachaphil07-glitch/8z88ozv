@@ -313,7 +313,64 @@ function lettoBody(ctx, p) {
   ];
 }
 
-const BODIES = { webuntis: webuntisBody, eduvidual: eduvidualBody, teams: teamsBody, letto: lettoBody };
+function lmsBody(ctx, p) {
+  const s = ctx.state.settings.platforms.lms;
+  const d = draft(ctx, 'lms');
+  const pages = s.pages || [];
+  const saveCreds = () => {
+    const creds = { username: d.username !== undefined ? d.username : s.username };
+    if (d.password) creds.password = d.password;
+    ctx.api.setCredentials('lms', creds).then(() => {
+      delete d.password;
+      ctx.toast('LMS.at-Anmeldedaten gespeichert.', 'ok');
+    });
+  };
+  const shortUrl = (u) => {
+    try {
+      const x = new URL(u);
+      return (x.host + x.pathname + x.search).replace(/\/$/, '');
+    } catch (_) {
+      return u;
+    }
+  };
+  return [
+    steps(
+      `Auf „Anmelden“ ${tap(ctx)} und bei LMS.at einloggen (LMS-Benutzername oder „Mit Microsoft anmelden“).`,
+      'Die Seite mit deinen Aufgaben öffnen und, falls es eine gibt, auch die Seite mit den Terminen (Kalender). Erkennt Schulradar dort Einträge mit Datum, merkt es sich die Seite und meldet sich unten.',
+      `${closeStep(ctx)}.`
+    ),
+    pages.length
+      ? h(
+          'div',
+          { class: 'help' },
+          h('strong', {}, `Gemerkte ${pages.length === 1 ? 'Seite' : 'Seiten'}: `),
+          h('ul', { class: 'page-list' }, pages.map((u) => h('li', {}, shortUrl(u)))),
+          h('button', { class: 'btn btn-small', onclick: () => ctx.actions.updatePlatform('lms', { pages: [] }) }, 'Vergessen')
+        )
+      : null,
+    h('div', { class: 'form-actions' }, h('button', { class: 'btn btn-primary', onclick: () => ctx.api.login('lms') }, icon('login'), 'Anmelden')),
+    h(
+      'div',
+      { class: 'help' },
+      h('strong', {}, 'Automatisch anmelden: '),
+      'Läuft die LMS-Sitzung ab, meldet sich Schulradar mit diesen Zugangsdaten wieder an. Meldest du dich bei LMS.at mit Microsoft an, lass die Felder leer – dann nutzt Schulradar die Microsoft-Anmeldung.'
+    ),
+    h(
+      'div',
+      { class: 'form-row' },
+      field(ctx, 'lms', 'username', { label: 'Benutzername', value: s.username }),
+      field(ctx, 'lms', 'password', { label: 'Passwort', type: 'password', placeholder: p.hasPassword ? '•••••••• (gespeichert)' : '' })
+    ),
+    h('div', { class: 'form-actions' }, saveButton('Speichern', saveCreds, false)),
+    advanced(
+      'Adresse',
+      field(ctx, 'lms', 'url', { label: 'LMS.at-Adresse', value: s.url, placeholder: 'https://lms.at/' }),
+      h('div', { class: 'form-actions' }, saveButton('Übernehmen', () => ctx.actions.updatePlatform('lms', { url: (d.url ?? s.url).trim() }), false))
+    )
+  ];
+}
+
+const BODIES = { webuntis: webuntisBody, eduvidual: eduvidualBody, teams: teamsBody, letto: lettoBody, lms: lmsBody };
 
 export function renderPlatforms(root, ctx) {
   const { state } = ctx;

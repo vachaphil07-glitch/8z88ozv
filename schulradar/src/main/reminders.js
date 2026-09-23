@@ -6,7 +6,7 @@ const { isActive, isExamLike, isAppointment } = require('./status');
 const HOUR = 3600 * 1000;
 const GRACE = 6 * HOUR; // war der PC aus, wird eine verpasste Erinnerung bis zu 6 h später nachgeholt
 
-const SOURCE_NAMES = { webuntis: 'WebUntis', teams: 'Teams', letto: 'Letto', eduvidual: 'Eduvidual', own: 'Eigene' };
+const SOURCE_NAMES = { webuntis: 'WebUntis', teams: 'Teams', letto: 'Letto', eduvidual: 'Eduvidual', lms: 'LMS.at', own: 'Eigene' };
 
 function parseTime(hhmm, fallback) {
   const m = String(hhmm || fallback).match(/^(\d{1,2}):(\d{2})$/);

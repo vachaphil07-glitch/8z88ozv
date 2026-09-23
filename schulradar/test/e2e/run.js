@@ -7,7 +7,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const assert = require('assert/strict');
-const { start, WEBUNTIS, LETTO } = require('./mock-server');
+const { start, WEBUNTIS, LETTO, LMS } = require('./mock-server');
 
 const ROOT = path.join(__dirname, '..', '..');
 const electron = require('electron'); // Pfad zur Electron-Programmdatei
@@ -27,12 +27,13 @@ async function main() {
           webuntis: { server: base, school: WEBUNTIS.school, username: WEBUNTIS.user, authMode: 'key' },
           eduvidual: { url: `${base}/moodle` },
           letto: { url: `${base}/letto/`, username: LETTO.user },
-          teams: { url: `${base}/teams/app` }
+          teams: { url: `${base}/teams/app` },
+          lms: { url: `${base}/lms/`, username: LMS.user }
         }
       }
     })
   );
-  const secrets = { 'webuntis.key': WEBUNTIS.secret, 'letto.password': LETTO.pass };
+  const secrets = { 'webuntis.key': WEBUNTIS.secret, 'letto.password': LETTO.pass, 'lms.password': LMS.pass };
   fs.writeFileSync(path.join(userData, 'zugangsdaten.bin'), 'PLAIN:' + Buffer.from(JSON.stringify(secrets)).toString('base64'));
 
   const env = {
@@ -74,7 +75,7 @@ async function main() {
   const { state, timetable, logs } = result;
   const bySource = (s) => state.items.filter((i) => i.source === s);
   const report = (s) => `${s}: ${state.sourceState[s].status} ${state.sourceState[s].message || ''} (${bySource(s).length} Einträge)`;
-  for (const s of ['webuntis', 'eduvidual', 'letto', 'teams']) console.log('  ' + report(s));
+  for (const s of ['webuntis', 'eduvidual', 'letto', 'teams', 'lms']) console.log('  ' + report(s));
 
   try {
     // WebUntis: Anmeldung mit Untis-Mobile-Schlüssel, Hausübungen, nur eigene Prüfung, Stundenplan
@@ -108,6 +109,19 @@ async function main() {
     const tm = bySource('teams');
     assert.ok(tm.find((i) => i.title === 'Projektdokumentation Kapitel 2' && i.status === 'open' && i.course === '4AHIT SEW'));
     assert.ok(tm.find((i) => i.title === 'Präsentation Datenbanken' && i.status === 'submitted'));
+
+    // LMS.at: automatische Anmeldung, Seiten „Aufgaben“ und „Termine“ selbst gefunden und gemerkt
+    assert.equal(state.sourceState.lms.status, 'ok', report('lms'));
+    const lm = bySource('lms');
+    assert.equal(lm.length, 5, JSON.stringify(lm.map((i) => i.title)));
+    const ref = lm.find((i) => i.title === 'Referat Energiewende – Handout');
+    assert.ok(ref && ref.type === 'assignment' && ref.status === 'open' && ref.subject === '4AHIT GGP' && !ref.allDay && new Date(ref.due).getHours() === 23);
+    assert.ok(lm.find((i) => i.title === 'Protokoll Messtechnik' && i.status === 'submitted' && i.allDay));
+    const sa = lm.find((i) => i.title === 'Schularbeit Mathematik');
+    assert.ok(sa && sa.type === 'exam' && sa.examType === 'Schularbeit' && sa.end - sa.due === 100 * 60000);
+    assert.ok(lm.find((i) => i.title === 'Test Wirtschaft' && i.type === 'exam' && i.examType === 'Test'));
+    assert.ok(lm.find((i) => i.title === 'Exkursion Technisches Museum' && i.type === 'event' && i.allDay));
+    assert.equal(state.settings.platforms.lms.pages.length, 2, 'Aufgaben- und Termine-Seite gemerkt');
   } catch (err) {
     console.error('\nProtokolle:', JSON.stringify(logs, null, 1));
     console.error('Server:', server.log.slice(-40).join('\n'));

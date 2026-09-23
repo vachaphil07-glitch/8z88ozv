@@ -13,6 +13,9 @@ module.exports = {
   letto: {
     url: 'https://letto.htl-hl.ac.at/'
   },
+  lms: {
+    url: 'https://lms.at/'
+  },
   teams: {
     // Neues Teams im Browser. Die App "Zuweisungen" (Assignments) öffnet Schulradar dann selbst.
     url: 'https://teams.cloud.microsoft/',

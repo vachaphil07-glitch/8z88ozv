@@ -7,10 +7,11 @@ export const SOURCE_META = {
   teams: { name: 'MS Teams', short: 'T', color: '#6264A7' },
   letto: { name: 'Letto', short: 'L', color: '#0E9F6E' },
   eduvidual: { name: 'Eduvidual', short: 'E', color: '#1E7FD8' },
+  lms: { name: 'LMS.at', short: 'LMS', color: '#0B7285' },
   own: { name: 'Eigene', short: '★', color: '#D6336C' }
 };
 
-export const SOURCE_ORDER = ['webuntis', 'teams', 'letto', 'eduvidual', 'own'];
+export const SOURCE_ORDER = ['webuntis', 'teams', 'letto', 'eduvidual', 'lms', 'own'];
 
 const TYPE_LABELS = {
   homework: 'Hausübung',
