@@ -60,3 +60,22 @@ test('Morgendliche Übersicht zählt Abgaben, Tests und Überfälliges', () => {
   const quiet = dailySummary({ items: [], local: {}, settings, lastSummary: '', now: at(2026, 9, 23, 7, 10) });
   assert.equal(quiet.silent, true);
 });
+
+test('Handy: künftige Erinnerungen werden im Voraus geplant', () => {
+  const { plannedReminders } = require('../src/main/reminders');
+  const items = [
+    { id: 't1', source: 'teams', type: 'assignment', title: 'Doku', due: at(2026, 9, 25, 23, 59), status: 'open' },
+    { id: 'e1', source: 'webuntis', type: 'exam', examType: 'Test', title: 'Test', subject: 'AM', due: at(2026, 9, 29, 8, 0), status: 'open' },
+    { id: 'x', source: 'teams', type: 'assignment', title: 'Fertig', due: at(2026, 9, 26, 12, 0), status: 'submitted' }
+  ];
+  const plan = plannedReminders({ items, local: { done: {}, dismissed: {} }, settings, now: at(2026, 9, 23, 12, 0) });
+  assert.deepEqual(
+    plan.map((p) => [p.itemId, new Date(p.at).getDate(), new Date(p.at).getHours()]),
+    [
+      ['t1', 24, 23],
+      ['t1', 25, 20],
+      ['e1', 28, 18]
+    ]
+  );
+  assert.equal(plannedReminders({ items, local: { done: { t1: 1 }, dismissed: {} }, settings, now: at(2026, 9, 23, 12, 0) }).length, 1);
+});

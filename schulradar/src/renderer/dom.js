@@ -31,13 +31,23 @@ function append(el, children) {
   }
 }
 
+// Schmale Bildschirme (Handy): eigene Anordnung für Woche usw.
+const phoneQuery = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(max-width: 760px)') : null;
+export const isPhone = () => Boolean(phoneQuery && phoneQuery.matches);
+export const onPhoneChange = (cb) => phoneQuery && phoneQuery.addEventListener('change', cb);
+
 export function clear(el) {
   while (el.firstChild) el.removeChild(el.firstChild);
   return el;
 }
 
+let gradientId = 0;
+
 export function icon(name, extraClass = '') {
-  return h('span', { class: `icon ${extraClass}`.trim(), 'aria-hidden': 'true', html: ICONS[name] || '' });
+  let html = ICONS[name] || '';
+  // eigene Farbverlauf-ID je Symbol: sonst verschwindet das Logo, wenn das erste versteckt ist (Handy)
+  if (html.includes('url(#rg)')) html = html.replaceAll('url(#rg)', `url(#rg${++gradientId})`).replace('id="rg"', `id="rg${gradientId}"`);
+  return h('span', { class: `icon ${extraClass}`.trim(), 'aria-hidden': 'true', html });
 }
 
 const svg = (body, vb = '0 0 24 24') =>

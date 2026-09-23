@@ -65,7 +65,17 @@ function sdSegment(x, y, ax, ay, bx, by, r) {
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
-function shade(x, y, simple) {
+function shade(x, y, simple, symbolOnly = false) {
+  if (symbolOnly) {
+    // nur die weißen Radar-Linien (für das adaptive Android-Symbol und die Benachrichtigung)
+    let a = 0;
+    const add = (alpha) => (a = Math.max(a, alpha));
+    if (Math.abs(sdCircle(x, y, 16, 16, 9.5)) - 1.3 <= 0) add(0.6);
+    if (Math.abs(sdCircle(x, y, 16, 16, 5)) - 1.2 <= 0) add(0.8);
+    if (sdSegment(x, y, 16, 16, 24.5, 9.5, 1.6) <= 0) add(1);
+    if (sdCircle(x, y, 21.5, 20.5, 2.4) <= 0) add(1);
+    return a ? [255, 255, 255, Math.round(a * 255)] : [0, 0, 0, 0];
+  }
   // Hintergrund: abgerundetes Quadrat mit Farbverlauf
   const inBg = sdRoundRect(x, y, 16, 16, 15, 15, 8) <= 0;
   if (!inBg) return [0, 0, 0, 0];
@@ -88,7 +98,7 @@ function shade(x, y, simple) {
   return [r, g, b, 255];
 }
 
-function render(size, { simple = false } = {}) {
+function render(size, { simple = false, symbolOnly = false, scale = 1 } = {}) {
   const ss = 4;
   const out = Buffer.alloc(size * size * 4);
   for (let py = 0; py < size; py++) {
@@ -99,9 +109,10 @@ function render(size, { simple = false } = {}) {
       let a = 0;
       for (let sy = 0; sy < ss; sy++) {
         for (let sx = 0; sx < ss; sx++) {
-          const x = ((px + (sx + 0.5) / ss) / size) * 32;
-          const y = ((py + (sy + 0.5) / ss) / size) * 32;
-          const c = shade(x, y, simple);
+          // scale < 1: Motiv kleiner in der Mitte (Rand bleibt durchsichtig)
+          const x = 16 + (((px + (sx + 0.5) / ss) / size) * 32 - 16) / scale;
+          const y = 16 + (((py + (sy + 0.5) / ss) / size) * 32 - 16) / scale;
+          const c = x < 0 || y < 0 || x > 32 || y > 32 ? [0, 0, 0, 0] : shade(x, y, simple, symbolOnly);
           const al = c[3] / 255;
           r += c[0] * al;
           g += c[1] * al;
@@ -120,11 +131,35 @@ function render(size, { simple = false } = {}) {
   return encodePng(size, out);
 }
 
-const root = path.join(__dirname, '..');
-fs.mkdirSync(path.join(root, 'assets'), { recursive: true });
-fs.mkdirSync(path.join(root, 'build'), { recursive: true });
-fs.writeFileSync(path.join(root, 'build', 'icon.png'), render(512));
-fs.writeFileSync(path.join(root, 'assets', 'icon.png'), render(256));
-fs.writeFileSync(path.join(root, 'assets', 'tray.png'), render(16, { simple: true }));
-fs.writeFileSync(path.join(root, 'assets', 'tray@2x.png'), render(32, { simple: true }));
-console.log('Symbole erzeugt: build/icon.png, assets/icon.png, assets/tray.png, assets/tray@2x.png');
+module.exports = { render };
+
+if (require.main === module) {
+  const root = path.join(__dirname, '..');
+  fs.mkdirSync(path.join(root, 'assets'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'build'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'build', 'icon.png'), render(512));
+  fs.writeFileSync(path.join(root, 'assets', 'icon.png'), render(256));
+  fs.writeFileSync(path.join(root, 'assets', 'tray.png'), render(16, { simple: true }));
+  fs.writeFileSync(path.join(root, 'assets', 'tray@2x.png'), render(32, { simple: true }));
+  console.log('Symbole erzeugt: build/icon.png, assets/icon.png, assets/tray.png, assets/tray@2x.png');
+
+  // Android-App (mobile/)
+  const res = path.join(root, 'mobile', 'android', 'app', 'src', 'main', 'res');
+  if (fs.existsSync(res)) {
+    const densities = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 };
+    for (const [name, f] of Object.entries(densities)) {
+      const dir = path.join(res, `mipmap-${name}`);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'ic_launcher.png'), render(Math.round(48 * f), { scale: 0.92 }));
+      fs.writeFileSync(path.join(dir, 'ic_launcher_round.png'), render(Math.round(48 * f), { scale: 0.92 }));
+      // adaptives Symbol: 108dp, Motiv im sicheren Bereich (ca. 60 %)
+      fs.writeFileSync(path.join(dir, 'ic_launcher_foreground.png'), render(Math.round(108 * f), { symbolOnly: true, scale: 0.62 }));
+      const nd = path.join(res, `drawable-${name}`);
+      fs.mkdirSync(nd, { recursive: true });
+      fs.writeFileSync(path.join(nd, 'ic_stat_schulradar.png'), render(Math.round(24 * f), { symbolOnly: true, scale: 1.1 }));
+    }
+    fs.mkdirSync(path.join(res, 'drawable-nodpi'), { recursive: true });
+    fs.writeFileSync(path.join(res, 'drawable-nodpi', 'splash_icon.png'), render(288));
+    console.log('Android-Symbole erzeugt.');
+  }
+}

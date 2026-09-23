@@ -3,6 +3,7 @@
 // Alle Plattformen teilen sich EINE Sitzung: Wer sich einmal mit dem Microsoft-Schulkonto anmeldet,
 // ist dadurch meist auch bei den anderen Plattformen mit "Mit Microsoft anmelden" sofort drin.
 const { session, net, BrowserWindow } = require('electron');
+const { HttpError, evalIn, waitFor, sleep } = require('./platform');
 
 const PARTITION = 'persist:schulradar-web';
 let initialized = false;
@@ -20,15 +21,6 @@ function webSession() {
     ses.setPermissionRequestHandler((_wc, permission, cb) => cb(permission === 'clipboard-sanitized-write'));
   }
   return ses;
-}
-
-class HttpError extends Error {
-  constructor(status, url, body) {
-    super(`HTTP ${status} bei ${new URL(url).host}`);
-    this.status = status;
-    this.url = url;
-    this.body = body;
-  }
 }
 
 async function httpFetch(url, opts = {}) {
@@ -121,26 +113,25 @@ async function withHiddenWindow(fn, { width = 1280, height = 900 } = {}) {
   win.webContents.setAudioMuted(true);
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   try {
-    return await fn(win);
+    return await fn(wrap(win));
   } finally {
     if (!win.isDestroyed()) win.destroy();
   }
 }
 
-/** Führt eine Funktion (als Quelltext) in der Seite aus. */
-function evalIn(win, fn, arg) {
-  if (win.isDestroyed()) return Promise.resolve(null);
-  const code = `(${fn.toString()})(${JSON.stringify(arg === undefined ? null : arg)})`;
-  return win.webContents.executeJavaScript(code, true).catch(() => null);
-}
-
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
+/** Macht aus einem BrowserWindow den Fenster-Adapter, den die Anbindungen erwarten (siehe platform.js). */
+function wrap(bw) {
+  return {
+    bw,
+    getURL: async () => (bw.isDestroyed() ? '' : bw.webContents.getURL()),
+    isDestroyed: () => bw.isDestroyed(),
+    exec: (code) => (bw.isDestroyed() ? Promise.resolve(null) : bw.webContents.executeJavaScript(code, true))
+  };
 }
 
 async function loadUrl(win, url, timeout = 45000) {
   await Promise.race([
-    win.loadURL(url).catch((err) => {
+    win.bw.loadURL(url).catch((err) => {
       // ERR_ABORTED tritt bei Weiterleitungen auf und ist harmlos
       if (!/ERR_ABORTED|-3/.test(String(err && err.message))) throw err;
     }),
@@ -148,24 +139,12 @@ async function loadUrl(win, url, timeout = 45000) {
   ]);
 }
 
-/** Wartet, bis check(win) etwas Wahres liefert. */
-async function waitFor(win, check, { timeout = 30000, interval = 700 } = {}) {
-  const until = Date.now() + timeout;
-  while (Date.now() < until) {
-    if (win.isDestroyed()) return null;
-    const res = await check(win);
-    if (res) return res;
-    await sleep(interval);
-  }
-  return null;
-}
-
 /**
  * Schneidet JSON-Antworten mit, die eine Seite (inkl. eingebetteter iframes) lädt.
  * Nutzt das Chrome DevTools Protocol, damit auch Tokens mit Sonderschutz funktionieren.
  */
 async function captureJson(win, { match, onJson, onSeen = () => {} }) {
-  const dbg = win.webContents.debugger;
+  const dbg = win.bw.webContents.debugger;
   try {
     dbg.attach('1.3');
   } catch (_) {
@@ -224,6 +203,10 @@ async function captureJson(win, { match, onJson, onSeen = () => {} }) {
   };
 }
 
+async function setCookie({ url, name, value, path = '/', secure = true }) {
+  await webSession().cookies.set({ url, name, value, path, secure });
+}
+
 /** Löscht Cookies & Speicher einer Plattform (nur deren Adressen). */
 async function clearOrigins(origins) {
   const ses = webSession();
@@ -253,6 +236,7 @@ module.exports = {
   PARTITION,
   webSession,
   chromeUserAgent,
+  wrap,
   HttpError,
   httpFetch,
   fetchJson,
@@ -263,5 +247,6 @@ module.exports = {
   waitFor,
   sleep,
   captureJson,
+  setCookie,
   clearOrigins
 };

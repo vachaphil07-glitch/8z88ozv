@@ -5,7 +5,7 @@
 //  1. Benutzername + "Untis Mobile"-Schlüssel (empfohlen, funktioniert auch bei Microsoft-Login)
 //  2. Benutzername + Passwort (nur bei eigenem WebUntis-Passwort)
 //  3. Vorhandene Browser-Sitzung aus dem Anmeldefenster (läuft nach kurzer Zeit ab)
-const { webSession, fetchJson, HttpError, clearOrigins } = require('../web');
+const { fetchJson, HttpError, clearOrigins, setCookie: setPlatformCookie, evalIn } = require('../platform');
 const { LoginRequiredError, ConfigError, splitTitle, stripHtml } = require('./base');
 const { untisToMs, toUntisDate, toIsoDate, addDays, startOfWeek, DAY } = require('../util/dates');
 const { totp } = require('../util/totp');
@@ -138,7 +138,7 @@ function baseUrl(s) {
 
 async function setCookie(cfg, name, value) {
   const secure = cfg.origin.startsWith('https:');
-  await webSession().cookies.set({ url: `${cfg.origin}/WebUntis`, name, value, path: '/WebUntis', secure });
+  await setPlatformCookie({ url: `${cfg.origin}/WebUntis`, name, value, path: '/WebUntis', secure });
 }
 
 function rpcBody(method, params) {
@@ -338,12 +338,10 @@ const connector = {
 
   /** Im Anmeldefenster nach dem Untis-Mobile-QR-Link suchen und Schlüssel automatisch übernehmen. */
   async onLoginPage(ctx, win) {
-    const text = await win.webContents
-      .executeJavaScript(
-        `(() => { const h = document.documentElement.innerHTML; const m = h.match(/untis:\\/\\/setschool\\?[^"'<>\\s]+/); return m ? m[0] : null; })()`,
-        true
-      )
-      .catch(() => null);
+    const text = await evalIn(win, () => {
+      const m = document.documentElement.innerHTML.match(/untis:\/\/setschool\?[^"'<>\s]+/);
+      return m ? m[0] : null;
+    });
     const info = parseUntisLink(text);
     if (!info) return null;
     ctx.saveSettings({ username: info.user, authMode: 'key', ...(info.server ? { server: info.server } : {}), ...(info.school ? { school: info.school } : {}) });

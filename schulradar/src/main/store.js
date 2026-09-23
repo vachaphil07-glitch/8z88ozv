@@ -81,6 +81,38 @@ function mergeDefaults(defaults, value) {
   return out;
 }
 
+/** Datei-Backend für den PC: schulradar-daten.json (+ .bak als Sicherung) */
+function fileIo(dir) {
+  const file = path.join(dir, 'schulradar-daten.json');
+  return {
+    file,
+    readAll() {
+      const out = [];
+      for (const f of [file, file + '.bak']) {
+        try {
+          out.push(fs.readFileSync(f, 'utf8'));
+        } catch (err) {
+          if (err.code !== 'ENOENT') console.warn('Konnte Daten nicht lesen:', f, err.message);
+        }
+      }
+      return out;
+    },
+    write(json) {
+      fs.mkdirSync(dir, { recursive: true });
+      const tmp = file + '.tmp';
+      fs.writeFileSync(tmp, json, 'utf8');
+      if (fs.existsSync(file)) {
+        try {
+          fs.copyFileSync(file, file + '.bak');
+        } catch (_) {
+          /* Sicherung ist optional */
+        }
+      }
+      fs.renameSync(tmp, file);
+    }
+  };
+}
+
 /** Alte Einstellungen an neue Versionen anpassen. */
 function migrate(data) {
   const teams = data.settings.platforms.teams;
@@ -89,20 +121,22 @@ function migrate(data) {
 }
 
 class Store {
-  constructor(dir) {
-    this.dir = dir;
-    this.file = path.join(dir, 'schulradar-daten.json');
+  /**
+   * dir: Datenordner (PC). io: optionales Speicher-Backend {readAll(): string[], write(json)} –
+   * die Android-App übergibt hier ihren eigenen Dateispeicher.
+   */
+  constructor(dir, io = null) {
+    this.io = io || fileIo(dir);
     this.timer = null;
     this.data = this.load();
   }
 
   load() {
-    for (const file of [this.file, this.file + '.bak']) {
+    for (const raw of this.io.readAll()) {
       try {
-        const raw = fs.readFileSync(file, 'utf8');
         return migrate(mergeDefaults(defaultData(), JSON.parse(raw)));
       } catch (err) {
-        if (err.code !== 'ENOENT') console.warn('Konnte Daten nicht lesen:', file, err.message);
+        console.warn('Konnte Daten nicht lesen:', err.message);
       }
     }
     return defaultData();
@@ -116,17 +150,7 @@ class Store {
   saveNow() {
     clearTimeout(this.timer);
     this.timer = null;
-    fs.mkdirSync(this.dir, { recursive: true });
-    const tmp = this.file + '.tmp';
-    fs.writeFileSync(tmp, JSON.stringify(this.data, null, 1), 'utf8');
-    if (fs.existsSync(this.file)) {
-      try {
-        fs.copyFileSync(this.file, this.file + '.bak');
-      } catch (_) {
-        /* Sicherung ist optional */
-      }
-    }
-    fs.renameSync(tmp, this.file);
+    this.io.write(JSON.stringify(this.data, null, 1));
   }
 
   get settings() {

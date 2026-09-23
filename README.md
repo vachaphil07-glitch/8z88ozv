@@ -1,5 +1,5 @@
 > **Schulradar** (Ordner [`schulradar/`](schulradar/README.md)): Alle Aufgaben, Abgaben und Tests aus WebUntis,
-> MS Teams, Letto und Eduvidual in einer Windows-App, mit Erinnerungen, Wochen- und Monatsansicht.
+> MS Teams, Letto und Eduvidual als App für Windows und Android, mit Erinnerungen, Wochen- und Monatsansicht.
 
 # NOVA DECK
 

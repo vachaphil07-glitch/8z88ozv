@@ -1,5 +1,5 @@
 // Wochenansicht: Abgaben & Tests pro Tag, darunter (optional) der Stundenplan aus WebUntis
-import { h, icon } from '../dom.js';
+import { h, icon, isPhone } from '../dom.js';
 import * as L from '../logic.js';
 
 function weekKey(ms) {
@@ -107,8 +107,8 @@ function lessonBlock(l, startMin) {
   );
 }
 
-/** Stundenplan als Zeitraster wie in WebUntis */
-function timetableGrid(lessons, days, now) {
+/** Stundenplan als Zeitraster wie in WebUntis (single: nur ein Tag, fürs Handy) */
+function timetableGrid(lessons, days, now, { single = false } = {}) {
   const merged = L.mergeLessons(lessons);
   if (!merged.length) return null;
   const startMin = Math.min(...merged.map((l) => L.minuteOfDay(l.start)));
@@ -141,7 +141,7 @@ function timetableGrid(lessons, days, now) {
     );
   });
 
-  return h('section', { class: 'tt' }, h('div', { class: 'week-cols tt-grid' }, axis, cols));
+  return h('section', { class: 'tt' }, h('div', { class: `week-cols tt-grid ${single ? 'is-day' : ''}` }, axis, cols));
 }
 
 export function renderWeek(root, ctx) {
@@ -165,9 +165,9 @@ export function renderWeek(root, ctx) {
   root.append(
     periodNav(ctx, {
       title: `KW ${L.isoWeek(ws)} · ${range}`,
-      onPrev: () => ctx.actions.setUi({ weekStart: L.addDays(ws, -7) }),
-      onNext: () => ctx.actions.setUi({ weekStart: L.addDays(ws, 7) }),
-      onToday: () => ctx.actions.setUi({ weekStart: L.startOfWeek(now) }),
+      onPrev: () => ctx.actions.setUi({ weekStart: L.addDays(ws, -7), weekDay: ui.weekDay ? L.addDays(ui.weekDay, -7) : null }),
+      onNext: () => ctx.actions.setUi({ weekStart: L.addDays(ws, 7), weekDay: ui.weekDay ? L.addDays(ui.weekDay, 7) : null }),
+      onToday: () => ctx.actions.setUi({ weekStart: L.startOfWeek(now), weekDay: L.startOfDay(now) }),
       extra: h(
         'label',
         { class: 'toggle-inline' },
@@ -180,6 +180,7 @@ export function renderWeek(root, ctx) {
 
   const days = Array.from({ length: 7 }, (_, i) => L.addDays(ws, i));
   const lessons = tt ? tt.lessons.filter((l) => l.start >= ws && l.start < L.addDays(ws, 7)) : [];
+  if (isPhone()) return renderDay(root, ctx, { days, items, lessons, tt, showTT, now });
 
   // Oben: Abgaben & Tests pro Tag (Karten)
   const cols = [h('div', { class: 'week-gutter' }, h('span', {}, 'Fällig'))];
@@ -213,4 +214,73 @@ export function renderWeek(root, ctx) {
       h('p', { class: 'hint' }, tt.error ? `Stundenplan nicht verfügbar: ${tt.error}` : 'Kein Stundenplan für diese Woche – dafür muss WebUntis verbunden sein.')
     );
   }
+}
+
+/** Handy: ein Tag auf einmal – oben die Wochentage, darunter Fälliges und der Stundenplan des Tages */
+function renderDay(root, ctx, { days, items, lessons, tt, showTT, now }) {
+  const ws = days[0];
+  const inWeek = (d) => d >= ws && d < L.addDays(ws, 7);
+  const today = L.startOfDay(now);
+  const day = ctx.ui.weekDay && inWeek(ctx.ui.weekDay) ? ctx.ui.weekDay : inWeek(today) ? today : ws;
+  const go = (delta) => {
+    const next = L.addDays(day, delta);
+    ctx.actions.setUi({ weekDay: next, weekStart: L.startOfWeek(next) });
+  };
+
+  const tabs = h(
+    'div',
+    { class: 'day-tabs' },
+    days.map((d, i) => {
+      const dayItems = L.itemsOnDay(items, d).filter((it) => !L.isFinished(L.effectiveStatus(it, ctx.state.local, now)));
+      const exam = dayItems.some((it) => L.isExamLike(it));
+      return h(
+        'button',
+        {
+          class: `day-tab ${L.dayDiff(d, day) === 0 ? 'is-active' : ''} ${L.dayDiff(d, now) === 0 ? 'is-today' : ''} ${i >= 5 ? 'is-weekend' : ''}`,
+          'aria-label': L.fmtDateLong(d),
+          onclick: () => ctx.actions.setUi({ weekDay: d })
+        },
+        h('span', { class: 'day-tab-name' }, L.WEEKDAYS_SHORT[new Date(d).getDay()]),
+        h('span', { class: 'day-tab-num' }, String(new Date(d).getDate())),
+        h('span', { class: `day-tab-dot ${dayItems.length ? 'is-on' : ''} ${exam ? 'is-exam' : ''}` })
+      );
+    })
+  );
+
+  const dayItems = L.itemsOnDay(items, day);
+  const dayLessons = lessons.filter((l) => l.start >= day && l.start < L.addDays(day, 1));
+  const grid = showTT ? timetableGrid(dayLessons, [day], now, { single: true }) : null;
+  const body = h(
+    'div',
+    { class: 'day-view' },
+    h('h3', { class: 'day-view-title' }, L.dayDiff(day, now) === 0 ? `Heute · ${L.fmtDayMonth(day)}` : L.fmtDateLong(day)),
+    dayItems.length
+      ? h('div', { class: 'day-list' }, dayItems.map((it) => card(it, ctx)))
+      : h('div', { class: 'day-empty' }, 'An diesem Tag ist nichts fällig.'),
+    grid,
+    showTT && tt && !tt.loading && !dayLessons.length
+      ? h(
+          'p',
+          { class: 'hint' },
+          tt.error ? `Stundenplan nicht verfügbar: ${tt.error}` : lessons.length ? 'Kein Unterricht an diesem Tag.' : 'Kein Stundenplan für diese Woche – dafür muss WebUntis verbunden sein.'
+        )
+      : null
+  );
+
+  // Wischen wechselt den Tag
+  let start = null;
+  body.addEventListener('touchstart', (e) => (start = { x: e.touches[0].clientX, y: e.touches[0].clientY }), { passive: true });
+  body.addEventListener(
+    'touchend',
+    (e) => {
+      if (!start) return;
+      const dx = e.changedTouches[0].clientX - start.x;
+      const dy = e.changedTouches[0].clientY - start.y;
+      start = null;
+      if (Math.abs(dx) > 70 && Math.abs(dy) < 50) go(dx < 0 ? 1 : -1);
+    },
+    { passive: true }
+  );
+
+  root.append(tabs, body);
 }

@@ -1,0 +1,5 @@
+node_modules/
+# werden von build.mjs erzeugt
+www/
+preview/
+dist/

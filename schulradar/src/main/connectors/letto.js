@@ -7,7 +7,7 @@
 // Letto meldet nach 20 Minuten automatisch ab. Damit der Abruf im Hintergrund klappt, kann man
 // Benutzername + Passwort speichern oder "Mit Microsoft anmelden" nutzen (dann reicht die
 // Microsoft-Anmeldung in der App).
-const { withHiddenWindow, loadUrl, evalIn, waitFor, sleep, clearOrigins } = require('../web');
+const { withHiddenWindow, loadUrl, evalIn, waitFor, sleep, clearOrigins } = require('../platform');
 const { LoginRequiredError, ConfigError, hashId } = require('./base');
 const { parseLooseDate, startOfDay } = require('../util/dates');
 
@@ -237,7 +237,7 @@ async function tryAutoLogin(ctx, win) {
   const ok = await waitFor(
     win,
     async (w) => {
-      const url = w.webContents.getURL();
+      const url = await w.getURL();
       if (/login\.microsoftonline\.com/i.test(url)) return null;
       const p = await evalIn(w, extractPage);
       return p && !p.login ? p : null;
@@ -277,7 +277,7 @@ const connector = {
       let page = await readPage(win);
       if (page && page.login) {
         if (!(await tryAutoLogin(ctx, win))) throw new LoginRequiredError('Letto: Bitte anmelden.');
-        if (win.webContents.getURL() !== target) await loadUrl(win, target);
+        if ((await win.getURL()) !== target) await loadUrl(win, target);
         page = await readPage(win);
         if (page && page.login) throw new LoginRequiredError('Letto: Anmeldung fehlgeschlagen – bitte Zugangsdaten prüfen.');
       }
@@ -286,7 +286,7 @@ const connector = {
         if (await evalIn(win, clickByText, ['Dashboard'])) {
           await sleep(1500);
           page = await readPage(win);
-          const url = win.webContents.getURL();
+          const url = await win.getURL();
           if (hasTable(page) && url && url !== target) ctx.saveSettings({ dashboardUrl: url });
         }
       }
@@ -294,7 +294,7 @@ const connector = {
       if (!hasTable(page)) {
         throw new Error('Letto: Dashboard nicht gefunden. Bitte unter Plattformen → Letto „Anmelden“ wählen und dort einmal das Dashboard öffnen.');
       }
-      const link = win.webContents.getURL() || target;
+      const link = (await win.getURL()) || target;
       const items = parseLettoTables(page.tables, { started: true, link });
       const before = JSON.stringify(page.tables);
 
@@ -321,7 +321,7 @@ const connector = {
 
   /** Im Anmeldefenster: Dashboard-Adresse merken. */
   async onLoginPage(ctx, win) {
-    const url = win.webContents.getURL();
+    const url = await win.getURL();
     if (/dashboard/i.test(url) && url !== ctx.settings.dashboardUrl) {
       ctx.saveSettings({ dashboardUrl: url });
       return { done: false, message: 'Letto-Dashboard gefunden – du kannst das Fenster jetzt schließen.' };

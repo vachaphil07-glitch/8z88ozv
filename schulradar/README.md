@@ -4,7 +4,7 @@
 
 Bei uns in der Schule kommen Aufgaben, Aufträge und Testtermine über vier verschiedene Plattformen.
 Um sicher zu sein, dass wirklich alles erledigt ist, musste man bisher alle vier einzeln durchsehen.
-Schulradar ist eine Windows-App, die das automatisch erledigt: Sie holt alle Einträge im Hintergrund ab,
+Schulradar ist eine App für Windows und Android, die das automatisch erledigt: Sie holt alle Einträge ab,
 zeigt sie in **einer** Liste sortiert nach Fälligkeit, erkennt, was schon abgegeben ist, und erinnert
 rechtzeitig an Abgaben und Tests.
 
@@ -46,6 +46,39 @@ Voreingestellt für die **HTL Hollabrunn**; für andere Schulen lassen sich alle
 
 Beim ersten Start erklärt eine kurze Einführung alles. Mit **„Erst mal Demo ansehen“** kann man die App
 mit Beispieldaten ausprobieren, ohne sich irgendwo anzumelden.
+
+## Am Handy (Android)
+
+Schulradar gibt es auch als Android-App – mit allem wie am PC: eigene Anmeldung bei allen vier Plattformen,
+Liste, Tagesansicht mit Stundenplan, Monat, eigene Aufgaben, Abhaken und Erinnerungen.
+
+<p>
+  <img src="docs/handy-uebersicht.png" alt="Übersicht am Handy" width="240" />
+  <img src="docs/handy-tag.png" alt="Tag mit Stundenplan am Handy" width="240" />
+  <img src="docs/handy-monat-dunkel.png" alt="Monat am Handy (dunkel)" width="240" />
+</p>
+
+1. Die Datei **`Schulradar-x.y.z.apk`** aufs Handy laden: unter *Releases* bzw. im neuesten Lauf von
+   *Actions → Schulradar* das Artefakt „Schulradar-Android“ (eine ZIP-Datei, darin liegt die APK).
+2. Die APK antippen. Beim ersten Mal fragt Android, ob der Browser bzw. die Dateien-App
+   *unbekannte Apps installieren* darf → **Zulassen**, zurück und **Installieren**.
+3. Warnt Google Play Protect („Unbekannte App“): **Weitere Details → Trotzdem installieren**. Die Meldung
+   kommt, weil die App nicht aus dem Play Store stammt.
+4. Beim ersten Start **Benachrichtigungen erlauben** – sonst gibt es keine Erinnerungen.
+5. Unter **Plattformen** wie am PC anmelden. Die Anmeldeseite öffnet sich über der App; wenn du fertig bist,
+   oben rechts auf **Fertig** tippen.
+
+**Update:** einfach die neue APK installieren. Anmeldungen, Häkchen und eigene Aufgaben bleiben erhalten.
+
+Unterschiede zum PC:
+
+- Abgerufen wird **beim Öffnen der App** und, solange sie offen ist, im eingestellten Abstand. Android lässt
+  Apps im Hintergrund kaum laufen. Die **Erinnerungen kommen trotzdem**, auch bei geschlossener App, weil sie
+  im Voraus geplant werden (auf wenige Minuten genau).
+- Die Woche zeigt einen **Tag auf einmal**: oben den Tag antippen oder nach links/rechts wischen.
+- Die Zurück-Taste schließt Dialoge und führt zur Übersicht zurück.
+- PC und Handy haben jeweils **eigene Daten**: Was am PC abgehakt wird, erscheint (noch) nicht automatisch am
+  Handy. Ein Abgleich, z. B. über OneDrive, ist noch nicht eingebaut.
 
 ## Plattformen verbinden (einmalig)
 
@@ -96,6 +129,8 @@ leer: Schulradar nutzt dann die Microsoft-Anmeldung.
 - Alle Daten bleiben auf dem eigenen PC: `%APPDATA%\Schulradar\schulradar-daten.json`.
 - Passwörter, Schlüssel und Tokens werden mit der **Windows-Verschlüsselung (DPAPI)** gespeichert
   (`zugangsdaten.bin`). Nur der eigene Windows-Benutzer kann sie entschlüsseln.
+- Am Handy liegen die Daten im geschützten App-Speicher, Zugangsdaten verschlüsselt mit dem
+  **Android-Schlüsselspeicher (Keystore)**.
 - **Einstellungen → Alles zurücksetzen** löscht Daten, Zugangsdaten und alle Anmeldungen.
 
 ## Wenn etwas nicht klappt
@@ -139,21 +174,40 @@ npm run dist       # Windows-Installer + portable Version nach dist/ (unter Wind
 npm run icons      # App-Symbole neu erzeugen
 ```
 
-Den Windows-Installer baut GitHub Actions (`.github/workflows/schulradar.yml`) bei jedem Push. Ein Tag
-`schulradar-vX.Y.Z` erzeugt zusätzlich ein Release mit Installer und portabler Version.
+Den Windows-Installer und die Android-APK baut GitHub Actions (`.github/workflows/schulradar.yml`) bei jedem
+Push. Ein Tag `schulradar-vX.Y.Z` erzeugt zusätzlich ein Release mit Installer, portabler Version und APK.
+
+Die Android-App (`mobile/`, Capacitor) verwendet **dieselbe Oberfläche und dieselben Anbindungen**:
+`mobile/build.mjs` kopiert `src/renderer` und bündelt `src/main` samt `mobile/core` (Android-Umsetzung von
+`platform.js`: Anfragen, Webansichten, JSON-Mitschnitt, Keystore) zu `mobile/www/core.js`.
+
+```bash
+cd schulradar/mobile
+npm install
+npm run preview    # Handy-Oberfläche im Browser ansehen: danach z. B. python3 -m http.server -d preview 8080
+npm run apk        # APK bauen (Android SDK + JDK 21) → android/app/build/outputs/apk/release/
+```
+
+Die Versionsnummer der APK kommt aus `schulradar/package.json`. Signiert wird mit
+`mobile/android/app/schulradar.keystore`. Der Schlüssel liegt absichtlich im Repository, damit jede neue
+Version über die alte installiert werden kann. Wer eine eigene Variante verteilt, sollte einen eigenen
+Schlüssel erzeugen.
 
 ```
 src/main/            Hauptprozess (Node)
   main.js            Fenster, Infobereich, IPC, Autostart
+  controller.js      Aktionen der Oberfläche (gemeinsam für PC und Handy)
+  platform.js        Schnittstelle Anbindungen ↔ Gerät (PC: web.js, Handy: mobile/core/android-web.js)
   sync.js            Abruf aller Plattformen, Zeitplan, Diagnose
   store.js           lokale JSON-Datei
   secrets.js         Zugangsdaten (Electron safeStorage / DPAPI)
   reminders.js       Erinnerungen & Morgen-Übersicht
   web.js             gemeinsame Browser-Sitzung, unsichtbare Fenster, JSON-Mitschnitt (DevTools-Protokoll)
-  login.js           Anmeldefenster
+  login.js           Anmeldefenster (Ablauf gemeinsam mit dem Handy: login-flow.js)
   connectors/        webuntis.js, eduvidual.js, teams.js, letto.js (+ demo.js)
 src/preload/         sichere Brücke zur Oberfläche
 src/renderer/        Oberfläche (ES-Module): app.js, logic.js, views/*
+mobile/              Android-App: core/ (Handy-Kern), android/ (Projekt + SchulradarNativePlugin.java)
 test/                node:test-Tests, test/e2e/ mit Mock-Server
 ```
 

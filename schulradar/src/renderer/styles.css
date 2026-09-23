@@ -2356,3 +2356,602 @@ p {
     flex-direction: column;
   }
 }
+
+/* ---------------------------------------------------------------- Handy (Android-App & schmale Fenster) */
+
+:root {
+  /* Abstände zu Statusleiste & Gestenleiste – setzt die Android-App (Capacitor) */
+  --sat: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --sab: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --sal: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+  --sar: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --tabbar-h: 60px;
+}
+
+/* Tagesansicht (nur auf dem Handy in Verwendung) */
+.day-tabs {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.day-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 0 5px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.day-tab-name {
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.day-tab-num {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.day-tab.is-weekend .day-tab-num {
+  color: var(--faint);
+}
+
+.day-tab.is-today .day-tab-num,
+.day-tab.is-today .day-tab-name {
+  color: var(--accent);
+}
+
+.day-tab.is-active {
+  background: var(--accent);
+}
+
+.day-tab.is-active .day-tab-name,
+.day-tab.is-active .day-tab-num {
+  color: var(--accent-contrast);
+}
+
+.day-tab-dot {
+  width: 5px;
+  height: 5px;
+  margin-top: 1px;
+  border-radius: 50%;
+}
+
+.day-tab-dot.is-on {
+  background: var(--accent);
+}
+
+.day-tab-dot.is-exam {
+  background: var(--exam);
+}
+
+.day-tab.is-active .day-tab-dot.is-on {
+  background: var(--accent-contrast);
+}
+
+.day-view-title {
+  font-size: 15px;
+  margin: 2px 2px 8px;
+}
+
+.day-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.day-list .mini {
+  padding: 9px 12px;
+}
+
+.day-list .mini-title {
+  font-size: 14px;
+}
+
+.day-view > .day-empty {
+  padding: 14px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+
+.tt-grid.is-day {
+  grid-template-columns: 44px minmax(0, 1fr);
+  min-width: 0;
+  gap: 8px;
+}
+
+/* ein Tag = viel Platz: Fach, Raum und Lehrkraft nebeneinander */
+.tt-grid.is-day .tt-lesson {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 0 10px;
+  padding: 5px 10px 5px 11px;
+  font-size: 13px;
+}
+
+.tt-grid.is-day .tt-subject {
+  order: -1;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.tt-grid.is-day .tt-teacher {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* Seitenleiste → Leiste unten */
+  .sidebar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    flex-direction: row;
+    height: calc(var(--tabbar-h) + var(--sab));
+    padding: 0 var(--sar) var(--sab) var(--sal);
+    border-right: 0;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .brand,
+  .side-section,
+  .side-footer {
+    display: none;
+  }
+
+  .nav {
+    flex-direction: row;
+    flex: 1;
+    gap: 0;
+    margin: 0;
+  }
+
+  .nav-item {
+    position: relative;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    padding: 6px 0 4px;
+    border-radius: 0;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .nav-item:hover,
+  .nav-item.is-active {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .nav-item.is-active {
+    color: var(--accent);
+  }
+
+  .nav-item .icon {
+    width: 23px;
+    height: 23px;
+    padding: 1px 0;
+  }
+
+  .nav-item.is-active .icon {
+    background: var(--accent-soft);
+    border-radius: 12px;
+    width: 52px;
+    padding: 1px 14px;
+  }
+
+  .nav-item > span:nth-child(2) {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  .nav-badge,
+  .nav-item.is-active .nav-badge {
+    position: absolute;
+    top: 3px;
+    left: calc(50% + 8px);
+    min-width: 18px;
+    height: 17px;
+    padding: 0 5px;
+    line-height: 17px;
+    font-size: 10.5px;
+    background: var(--accent);
+    color: var(--accent-contrast);
+  }
+
+  .nav-badge.is-danger,
+  .nav-item.is-active .nav-badge.is-danger {
+    background: var(--danger);
+    color: #fff;
+  }
+
+  .nav-badge.is-warn,
+  .nav-item.is-active .nav-badge.is-warn {
+    background: var(--warn);
+    color: #fff;
+  }
+
+  .main {
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Kopfzeile: Titel + Knöpfe, darunter die Suche */
+  .topbar {
+    height: auto;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: calc(var(--sat) + 8px) calc(12px + var(--sar)) 10px calc(16px + var(--sal));
+  }
+
+  .topbar-title h1 {
+    font-size: 21px;
+  }
+
+  #view-subtitle {
+    display: none;
+  }
+
+  .topbar-actions {
+    display: contents;
+  }
+
+  .topbar .search {
+    order: 3;
+    flex: 1 1 100%;
+    width: auto;
+    height: 40px;
+    border-radius: 10px;
+  }
+
+  .topbar .btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 10px;
+  }
+
+  .topbar .btn .icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .view {
+    scrollbar-gutter: auto;
+    padding-bottom: calc(var(--tabbar-h) + var(--sab));
+  }
+
+  .view-inner {
+    padding: 12px calc(12px + var(--sar)) 28px calc(12px + var(--sal));
+  }
+
+  .btn {
+    height: 38px;
+  }
+
+  .btn-small {
+    height: 32px;
+  }
+
+  /* Übersicht */
+  .stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .stat {
+    padding: 9px 4px 8px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 22px;
+  }
+
+  .stat-label {
+    font-size: 11.5px;
+    line-height: 1.25;
+  }
+
+  .stat-hint {
+    display: none;
+  }
+
+  .banner {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+  }
+
+  .banner > .btn {
+    margin-left: auto;
+  }
+
+  .filterbar {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 10px;
+    margin: 2px 0 12px;
+  }
+
+  .chips {
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 0 -12px;
+    padding: 0 12px 2px;
+    scrollbar-width: none;
+  }
+
+  .chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chip {
+    flex: none;
+    height: 32px;
+  }
+
+  .filter-right {
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .segmented {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .segmented button {
+    flex: 1 1 auto;
+    white-space: nowrap;
+    height: 30px;
+    padding: 0 4px;
+    font-size: 12.5px;
+  }
+
+  /* Einträge */
+  .item-main {
+    align-items: flex-start;
+    gap: 11px;
+    padding: 12px 12px 12px 14px;
+  }
+
+  .check,
+  .lead-icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .item-title {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    word-break: break-word;
+  }
+
+  .item.is-expanded .item-title {
+    display: block;
+  }
+
+  .item-meta {
+    gap: 2px 8px;
+    font-size: 12px;
+  }
+
+  .meta-bit + .meta-bit::before,
+  .src-badge + .meta-bit::before {
+    margin-right: 8px;
+  }
+
+  .item-side {
+    gap: 2px;
+    max-width: 38%;
+  }
+
+  .due {
+    font-size: 13px;
+  }
+
+  .side-bottom {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+  }
+
+  .progress-track {
+    width: 40px;
+  }
+
+  .details {
+    padding: 2px 14px 14px 14px;
+  }
+
+  .facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+  }
+
+  /* Woche & Monat */
+  .period-nav {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .period-title {
+    order: -1;
+    flex: 1 1 100%;
+    font-size: 17px;
+  }
+
+  .period-extra {
+    margin-left: auto;
+  }
+
+  .tt {
+    margin-top: 16px;
+  }
+
+  .month-layout {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .month-dow {
+    padding: 6px 0;
+    text-align: center;
+    font-size: 11px;
+  }
+
+  .month-cell {
+    align-items: center;
+    min-height: 54px;
+    padding: 5px 2px;
+  }
+
+  .month-pills {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 3px;
+  }
+
+  .month-pill {
+    width: 7px;
+    height: 7px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    font-size: 0;
+    background: var(--c);
+  }
+
+  .month-pill.is-exam {
+    background: var(--exam);
+  }
+
+  .month-pill .pill-icon,
+  .month-more {
+    display: none;
+  }
+
+  .day-panel {
+    position: static;
+    padding: 12px;
+  }
+
+  /* Plattformen & Einstellungen */
+  .platform-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-foot {
+    flex-wrap: wrap;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
+
+  .form-actions {
+    flex-wrap: wrap;
+  }
+
+  .set-row {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+
+  .set-text {
+    flex: 1 1 200px;
+  }
+
+  .set-control {
+    margin-left: auto;
+  }
+
+  /* Dialoge als Blatt von unten */
+  .overlay {
+    align-items: flex-end;
+    padding: var(--sat) 0 0;
+  }
+
+  .modal,
+  .modal-wide {
+    max-width: none;
+    max-height: calc(100vh - var(--sat) - 24px);
+    max-height: calc(100dvh - var(--sat) - 24px);
+    border-radius: 18px 18px 0 0;
+    border-bottom: 0;
+    padding: 20px calc(16px + var(--sar)) calc(20px + var(--sab)) calc(16px + var(--sal));
+    animation: sheetin 0.18s ease-out;
+  }
+
+  .form-actions.end {
+    justify-content: stretch;
+  }
+
+  .form-actions.end > .btn {
+    flex: 1;
+  }
+
+  .toast-root {
+    left: 12px;
+    right: 12px;
+    bottom: calc(var(--tabbar-h) + var(--sab) + 12px);
+    align-items: center;
+  }
+
+  .empty {
+    padding: 40px 12px;
+  }
+
+  .empty-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 380px) {
+  .nav-item {
+    font-size: 9.5px;
+  }
+}
+
+@keyframes sheetin {
+  from {
+    transform: translateY(40px);
+    opacity: 0.4;
+  }
+}

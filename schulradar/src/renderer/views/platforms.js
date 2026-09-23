@@ -169,13 +169,17 @@ function webuntisBody(ctx, p) {
   ];
 }
 
+// Handy: Anmeldeseite wird mit „Fertig“ geschlossen statt mit dem Fenster-✕
+const closeStep = (ctx) => (ctx.state.platform === 'android' ? 'Oben rechts auf „Fertig“ tippen' : 'Fenster schließen');
+const tap = (ctx) => (ctx.state.platform === 'android' ? 'tippen' : 'klicken');
+
 function eduvidualBody(ctx, p) {
   const s = ctx.state.settings.platforms.eduvidual;
   const d = draft(ctx, 'eduvidual');
   return [
     steps(
-      'Auf „Anmelden“ klicken und wie gewohnt einloggen (eduvidual-Konto, Microsoft oder Google).',
-      'Schulradar richtet danach automatisch den Zugang ein und schließt das Fenster.'
+      `Auf „Anmelden“ ${tap(ctx)} und wie gewohnt einloggen (eduvidual-Konto, Microsoft oder Google).`,
+      `Schulradar richtet danach automatisch den Zugang ein und schließt die Anmeldeseite.`
     ),
     p.hasToken ? h('p', { class: 'ok-line' }, icon('check'), 'App-Zugang ist eingerichtet – eine erneute Anmeldung ist normalerweise nicht nötig.') : null,
     h('div', { class: 'form-actions' }, h('button', { class: 'btn btn-primary', onclick: () => ctx.api.login('eduvidual') }, icon('login'), p.hasToken ? 'Neu anmelden' : 'Anmelden')),
@@ -208,9 +212,9 @@ function teamsBody(ctx, p) {
   if (mode === 'web') {
     body.push(
       steps(
-        'Auf „Anmelden“ klicken und mit dem Schulkonto bei Microsoft anmelden („Angemeldet bleiben“ bestätigen).',
-        'Warten, bis Teams geladen ist, und links auf „Zuweisungen“ klicken. Sobald die Aufgaben erkannt sind, erscheint unten eine Meldung.',
-        'Fenster schließen – Schulradar liest die Aufgaben ab jetzt im Hintergrund.'
+        `Auf „Anmelden“ ${tap(ctx)} und mit dem Schulkonto bei Microsoft anmelden („Angemeldet bleiben“ bestätigen).`,
+        `Warten, bis Teams geladen ist, und links auf „Zuweisungen“ ${tap(ctx)}. Sobald die Aufgaben erkannt sind, erscheint unten eine Meldung.`,
+        `${closeStep(ctx)} – Schulradar liest die Aufgaben ab jetzt im Hintergrund.`
       ),
       h('div', { class: 'form-actions' }, h('button', { class: 'btn btn-primary', onclick: () => ctx.api.login('teams') }, icon('login'), 'Anmelden')),
       advanced(
@@ -277,9 +281,9 @@ function lettoBody(ctx, p) {
   };
   return [
     steps(
-      'Auf „Anmelden“ klicken und bei Letto einloggen.',
+      `Auf „Anmelden“ ${tap(ctx)} und bei Letto einloggen.`,
       'Einmal das „Dashboard“ öffnen – Schulradar merkt sich die Seite.',
-      'Fenster schließen.'
+      `${closeStep(ctx)}.`
     ),
     s.dashboardUrl ? h('p', { class: 'ok-line' }, icon('check'), 'Dashboard gefunden.') : null,
     h('div', { class: 'form-actions' }, h('button', { class: 'btn btn-primary', onclick: () => ctx.api.login('letto') }, icon('login'), 'Anmelden')),
@@ -317,7 +321,9 @@ export function renderPlatforms(root, ctx) {
     h(
       'p',
       { class: 'lead' },
-      'Hier verbindest du Schulradar mit deinen Schul-Plattformen. Zugangsdaten werden nur auf diesem PC gespeichert (mit Windows verschlüsselt) und nur an die jeweilige Plattform gesendet.'
+      state.platform === 'android'
+        ? 'Hier verbindest du Schulradar mit deinen Schul-Plattformen. Zugangsdaten werden nur auf diesem Handy gespeichert (verschlüsselt) und nur an die jeweilige Plattform gesendet.'
+        : 'Hier verbindest du Schulradar mit deinen Schul-Plattformen. Zugangsdaten werden nur auf diesem PC gespeichert (mit Windows verschlüsselt) und nur an die jeweilige Plattform gesendet.'
     )
   );
   if (state.demo) {

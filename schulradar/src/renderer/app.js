@@ -1,5 +1,5 @@
 // Schulradar – Oberfläche
-import { h, clear, icon } from './dom.js';
+import { h, clear, icon, isPhone, onPhoneChange } from './dom.js';
 import * as L from './logic.js';
 import { renderList } from './views/list.js';
 import { renderWeek } from './views/week.js';
@@ -278,7 +278,7 @@ function renderTopbar() {
         h('input', {
           id: 'search',
           type: 'search',
-          placeholder: 'Suchen …  (Strg+F)',
+          placeholder: isPhone() ? 'Suchen …' : 'Suchen …  (Strg+F)',
           value: ui.search,
           oninput: (e) => {
             ui.search = e.target.value;
@@ -437,6 +437,27 @@ document.addEventListener('keydown', (e) => {
     actions.go(Object.keys(VIEWS)[Number(e.key) - 1]);
   }
 });
+
+// Handy: Zurück-Taste schließt erst Dialoge und Details, dann geht's zur Übersicht
+if (api.onBack) {
+  api.onBack(() => {
+    if (document.body.classList.contains('has-modal')) {
+      closeModal();
+      return true;
+    }
+    if (ui.expanded) {
+      ui.expanded = null;
+      render();
+      return true;
+    }
+    if (ui.view !== 'list') {
+      actions.go('list');
+      return true;
+    }
+    return false;
+  });
+}
+onPhoneChange(() => render());
 
 // Minütlich neu zeichnen, damit "in 5 Min." & Co. aktuell bleiben
 setInterval(() => {

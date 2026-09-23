@@ -30,8 +30,8 @@ function describe(item) {
   return `${item.title}${bits.length ? ` (${bits.join(' · ')})` : ''}`;
 }
 
-/** Welche Erinnerungen sind jetzt fällig? (reine Funktion, testbar) */
-function dueReminders({ items, local, settings, fired, now = Date.now() }) {
+/** Alle Erinnerungszeitpunkte für offene Einträge (reine Funktion, testbar). */
+function reminderTriggers({ items, local, settings, now = Date.now() }) {
   const r = settings.reminders || {};
   if (!r.enabled) return [];
   const out = [];
@@ -48,8 +48,6 @@ function dueReminders({ items, local, settings, fired, now = Date.now() }) {
       for (const h of r.leadHours || []) triggers.push({ at: it.due - h * HOUR, kind: `${h}h`, hours: h });
     }
     for (const tr of triggers) {
-      const key = `${it.id}|${tr.kind}|${it.due}`;
-      if (fired[key] || now < tr.at || now - tr.at > GRACE) continue;
       let title;
       if (tr.kind === 'vorabend') {
         title = isExamLike(it)
@@ -60,10 +58,23 @@ function dueReminders({ items, local, settings, fired, now = Date.now() }) {
       } else {
         title = `Fällig ${leadText(tr.hours)} (${timeText(it.due)})`;
       }
-      out.push({ key, itemId: it.id, title, body: describe(it) + (it.room ? ` · ${it.room}` : '') });
+      out.push({ key: `${it.id}|${tr.kind}|${it.due}`, at: tr.at, itemId: it.id, title, body: describe(it) + (it.room ? ` · ${it.room}` : '') });
     }
   }
   return out;
+}
+
+/** Welche Erinnerungen sind jetzt fällig? (PC: wird jede Minute geprüft) */
+function dueReminders({ items, local, settings, fired, now = Date.now() }) {
+  return reminderTriggers({ items, local, settings, now }).filter((t) => !fired[t.key] && now >= t.at && now - t.at <= GRACE);
+}
+
+/** Künftige Erinnerungen zum Vorausplanen (Handy: Android stellt sie auch bei geschlossener App zu). */
+function plannedReminders({ items, local, settings, fired = {}, now = Date.now(), horizonDays = 21 }) {
+  const until = now + horizonDays * DAY;
+  return reminderTriggers({ items, local, settings, now })
+    .filter((t) => !fired[t.key] && t.at > now && t.at <= until)
+    .sort((a, b) => a.at - b.at);
 }
 
 /** Morgendliche Übersicht (einmal pro Tag). */
@@ -140,4 +151,4 @@ class ReminderService {
   }
 }
 
-module.exports = { ReminderService, dueReminders, dailySummary };
+module.exports = { ReminderService, dueReminders, plannedReminders, reminderTriggers, dailySummary };

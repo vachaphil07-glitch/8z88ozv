@@ -6,7 +6,7 @@
 // Modus "graph": Offizielle Microsoft-Graph-Schnittstelle. Nur möglich, wenn die Schul-IT eine
 //   App-Registrierung freigegeben hat (Client-ID in den Einstellungen eintragen).
 const presets = require('../presets');
-const { withHiddenWindow, captureJson, loadUrl, evalIn, sleep, fetchJson, clearOrigins } = require('../web');
+const { withHiddenWindow, captureJson, loadUrl, evalIn, sleep, fetchJson, clearOrigins } = require('../platform');
 const { LoginRequiredError, ConfigError, stripHtml } = require('./base');
 
 const SUBMISSION_STATES = new Set(['working', 'submitted', 'returned', 'reassigned', 'excused']);
@@ -217,7 +217,7 @@ async function syncWeb(ctx) {
     try {
       ctx.log(`Öffne Teams im Hintergrund: ${target}`);
       await loadUrl(win, target, 60000);
-      ctx.log(`Seite geladen: ${win.webContents.getURL().split('?')[0]}`);
+      ctx.log(`Seite geladen: ${(await win.getURL()).split('?')[0]}`);
       const started = Date.now();
       let loginSince = 0;
       let clicks = 0;
@@ -226,7 +226,7 @@ async function syncWeb(ctx) {
       while (Date.now() - started < 120000) {
         await sleep(1500);
         if (win.isDestroyed()) break;
-        const url = win.webContents.getURL();
+        const url = await win.getURL();
         if (isLoginUrl(url)) {
           loginSince = loginSince || Date.now();
           if (Date.now() - loginSince > 15000) throw new LoginRequiredError('Teams: Bitte unter Plattformen → MS Teams neu anmelden.');

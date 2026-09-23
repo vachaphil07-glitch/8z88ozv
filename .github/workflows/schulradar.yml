@@ -69,9 +69,55 @@ jobs:
           if-no-files-found: error
       - name: Release veröffentlichen
         if: startsWith(github.ref, 'refs/tags/schulradar-v')
-        shell: pwsh
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $files = Get-ChildItem dist -Filter *.exe | Where-Object { $_.Name -like 'Schulradar-*' } | ForEach-Object { $_.FullName }
-          gh release create "$env:GITHUB_REF_NAME" $files --title "Schulradar $($env:GITHUB_REF_NAME -replace 'schulradar-v','')" --notes "Windows-Installer (Schulradar-Setup-…exe) und portable Version ohne Installation. Anleitung: siehe schulradar/README.md."
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "Schulradar ${GITHUB_REF_NAME#schulradar-v}" --notes "PC: Schulradar-Setup-…exe (Installer) oder die portable Version. Handy (Android): Schulradar-…apk. Anleitung: siehe schulradar/README.md." || true
+          gh release upload "$GITHUB_REF_NAME" dist/Schulradar-*.exe --clobber
+
+  android:
+    name: Android-App (APK)
+    needs: test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: schulradar/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: schulradar/mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - run: npm ci
+      - name: Oberfläche und Kern bündeln
+        run: node build.mjs --minify
+      - name: Android-Projekt aktualisieren
+        run: npx cap sync android
+      - name: APK bauen
+        working-directory: schulradar/mobile/android
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+      - name: APK benennen
+        run: |
+          VERSION=$(node -p "require('../package.json').version")
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/Schulradar-$VERSION.apk"
+          ls -l dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Schulradar-Android
+          path: schulradar/mobile/dist/Schulradar-*.apk
+          if-no-files-found: error
+      - name: Release veröffentlichen
+        if: startsWith(github.ref, 'refs/tags/schulradar-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "Schulradar ${GITHUB_REF_NAME#schulradar-v}" --notes "PC: Schulradar-Setup-…exe (Installer) oder die portable Version. Handy (Android): Schulradar-…apk. Anleitung: siehe schulradar/README.md." || true
+          gh release upload "$GITHUB_REF_NAME" dist/Schulradar-*.apk --clobber

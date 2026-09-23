@@ -4,7 +4,7 @@
 // Nach der Anmeldung im Anmeldefenster (egal ob eduvidual-Konto, Microsoft oder Google) holt sich
 // die App über den offiziellen "Moodle-App"-Zugang (launch.php) einen langlebigen Token.
 // Klappt das nicht, wird die normale Browser-Sitzung verwendet.
-const { fetchJson, httpFetch, requestManual, clearOrigins } = require('../web');
+const { fetchJson, httpFetch, requestManual, clearOrigins } = require('../platform');
 const { LoginRequiredError, ConfigError, stripHtml } = require('./base');
 
 // ---------------------------------------------------------------- Parser (testbar)
@@ -271,7 +271,7 @@ const connector = {
 
   /** Sobald man im Anmeldefenster eingeloggt ist: App-Zugang holen und Fenster schließen. */
   async onLoginPage(ctx, win) {
-    const url = win.webContents.getURL();
+    const url = await win.getURL();
     let origin;
     try {
       origin = new URL(siteBase(ctx.settings)).origin;

@@ -214,8 +214,10 @@ export function openOnboarding(ctx) {
         'ol',
         { class: 'onb-steps' },
         step(1, 'Plattformen verbinden', 'Einmal bei jeder Plattform anmelden – so wie im Browser, auch mit „Mit Microsoft anmelden“.'),
-        step(2, 'Zurücklehnen', 'Schulradar holt alle 30 Minuten neue Aufgaben und erkennt, was schon abgegeben ist.'),
-        step(3, 'Erinnert werden', 'Am Vorabend von Tests und vor Abgaben kommt eine Windows-Benachrichtigung.')
+        ctx.state.platform === 'android'
+          ? step(2, 'Zurücklehnen', 'Beim Öffnen holt Schulradar neue Aufgaben und erkennt, was schon abgegeben ist.')
+          : step(2, 'Zurücklehnen', 'Schulradar holt alle 30 Minuten neue Aufgaben und erkennt, was schon abgegeben ist.'),
+        step(3, 'Erinnert werden', `Am Vorabend von Tests und vor Abgaben kommt eine ${ctx.state.platform === 'android' ? 'Benachrichtigung aufs Handy' : 'Windows-Benachrichtigung'}.`)
       ),
       h(
         'div',
