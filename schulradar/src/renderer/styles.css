@@ -413,6 +413,8 @@ p {
 }
 
 .view {
+  /* Bezugsrahmen für alles Positionierte darin – sonst wird die ganze Seite höher und verrutscht */
+  position: relative;
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -582,6 +584,7 @@ p {
 }
 
 .toggle-inline {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1993,6 +1996,7 @@ p {
 }
 
 .radio {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -2191,6 +2195,7 @@ p {
 }
 
 .modal {
+  position: relative;
   width: 100%;
   max-width: 520px;
   max-height: calc(100vh - 48px);

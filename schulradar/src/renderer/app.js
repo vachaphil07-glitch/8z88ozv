@@ -185,6 +185,21 @@ actions.exportAllToCalendar = (withTasks) => {
   return actions.saveCalendar(events, name);
 };
 
+/** Nur den Inhaltsbereich scrollen – scrollIntoView würde auch das ganze Fenster verschieben */
+function scrollViewTo(el, block = 'start', behavior = 'smooth') {
+  const view = document.getElementById('view');
+  if (!el || !view || !view.contains(el)) return;
+  const offset = el.getBoundingClientRect().top - view.getBoundingClientRect().top + view.scrollTop;
+  const top = block === 'center' ? offset - (view.clientHeight - el.offsetHeight) / 2 : offset - 12;
+  view.scrollTo({ top: Math.max(0, top), behavior });
+}
+
+// Sicherheitsnetz: das Fenster selbst scrollt nie (nur die Bereiche darin)
+window.addEventListener('scroll', () => {
+  const root = document.scrollingElement || document.documentElement;
+  if (root.scrollTop || root.scrollLeft) root.scrollTo(0, 0);
+});
+
 function shorten(text, max = 50) {
   const t = String(text || '');
   return t.length > max ? `${t.slice(0, max - 1)}…` : t;
@@ -248,7 +263,7 @@ function renderSources() {
           title: s.message || '',
           onclick: () => {
             actions.go('platforms');
-            setTimeout(() => document.getElementById(`platform-${p.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+            setTimeout(() => scrollViewTo(document.getElementById(`platform-${p.id}`), 'start'), 60);
           }
         },
         h('span', { class: 'src-dot' }),
@@ -394,7 +409,7 @@ function focusItem(id) {
   setTimeout(() => {
     const el = document.querySelector(`.item[data-id="${CSS.escape(id)}"]`);
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      scrollViewTo(el, 'center');
       el.classList.add('is-flash');
       setTimeout(() => el.classList.remove('is-flash'), 1600);
     }
@@ -424,7 +439,7 @@ api.onNavigate((view) => {
       actions.toggleExpand(first.dataset.id);
       setTimeout(() => {
         const btn = document.querySelector('.item.is-expanded [aria-haspopup=menu]');
-        btn?.scrollIntoView({ block: 'center' });
+        scrollViewTo(btn, 'center', 'auto');
         setTimeout(() => btn?.click(), 150);
       }, 100);
     }
