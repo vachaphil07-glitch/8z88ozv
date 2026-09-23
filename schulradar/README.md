@@ -72,6 +72,8 @@ Liste, Tagesansicht mit Stundenplan, Monat, eigene Aufgaben, Abhaken und Erinner
    oben rechts auf **Fertig** tippen.
 
 **Update:** einfach die neue APK installieren. Anmeldungen, Häkchen und eigene Aufgaben bleiben erhalten.
+Ausnahme: Wer eine Version **bis 1.2.2** installiert hat, muss die App **einmal deinstallieren** und
+1.2.3 (oder neuer) neu installieren – ab 1.2.3 wird mit einem neuen Schlüssel signiert.
 
 Unterschiede zum PC:
 
@@ -217,10 +219,17 @@ npm run preview    # Handy-Oberfläche im Browser ansehen: danach z. B. python3 
 npm run apk        # APK bauen (Android SDK + JDK 21) → android/app/build/outputs/apk/release/
 ```
 
-Die Versionsnummer der APK kommt aus `schulradar/package.json`. Signiert wird mit
-`mobile/android/app/schulradar.keystore`. Der Schlüssel liegt absichtlich im Repository, damit jede neue
-Version über die alte installiert werden kann. Wer eine eigene Variante verteilt, sollte einen eigenen
-Schlüssel erzeugen.
+Die Versionsnummer der APK kommt aus `schulradar/package.json`. Der Signaturschlüssel liegt **nicht** im
+Repository, sondern als GitHub-Secret `ANDROID_KEYSTORE_BASE64` (PKCS12-Datei, Base64, Alias
+`schulradar`; optional `SCHULRADAR_KEYSTORE_PASSWORD`, sonst Passwort `schulradar`). Ohne das Secret – lokal
+oder in Forks – wird mit dem Debug-Schlüssel signiert; so eine APK lässt sich nicht als Update über die
+offizielle Version installieren. Ein Release bricht ohne Secret bewusst ab.
+Eigenen Schlüssel erzeugen:
+`keytool -genkeypair -storetype PKCS12 -keystore schulradar-release.p12 -alias schulradar -keyalg RSA -keysize 2048 -validity 10000`,
+dann `base64 -w0 schulradar-release.p12` als Secret hinterlegen.
+
+Neue Version veröffentlichen: Version in `package.json` erhöhen, dann *Actions → Schulradar → Run workflow*
+mit Häkchen **„GitHub-Release erstellen“** (legt Tag `schulradar-vX.Y.Z` und Release mit .exe und .apk an).
 
 ```
 src/main/            Hauptprozess (Node)

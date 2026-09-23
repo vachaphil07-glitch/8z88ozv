@@ -108,6 +108,21 @@ jobs:
         run: node build.mjs --minify
       - name: Android-Projekt aktualisieren
         run: npx cap sync android
+      - name: Signaturschlüssel bereitstellen
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          WANT_RELEASE: ${{ startsWith(github.ref, 'refs/tags/schulradar-v') || inputs.release }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/schulradar-release.p12"
+            echo "SCHULRADAR_KEYSTORE=$RUNNER_TEMP/schulradar-release.p12" >> "$GITHUB_ENV"
+            echo "APK wird mit dem Schulradar-Schlüssel signiert."
+          elif [ "$WANT_RELEASE" = "true" ]; then
+            echo "::error::Für ein Release fehlt das Secret ANDROID_KEYSTORE_BASE64 (Settings → Secrets and variables → Actions)."
+            exit 1
+          else
+            echo "::warning::Secret ANDROID_KEYSTORE_BASE64 fehlt – die APK wird nur mit einem Test-Schlüssel signiert und lässt sich nicht als Update installieren."
+          fi
       - name: APK bauen
         working-directory: schulradar/mobile/android
         run: ./gradlew assembleRelease --no-daemon --stacktrace

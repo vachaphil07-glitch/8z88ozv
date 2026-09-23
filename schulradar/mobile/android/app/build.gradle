@@ -5,6 +5,13 @@ def appVersion = new groovy.json.JsonSlurper().parse(file('../../../package.json
 def versionParts = appVersion.tokenize('.').collect { it.replaceAll('[^0-9].*', '') as int }
 def appVersionCode = versionParts[0] * 10000 + versionParts[1] * 100 + versionParts[2]
 
+// Signaturschlüssel: kommt in GitHub Actions aus dem Secret ANDROID_KEYSTORE_BASE64 (siehe Workflow)
+// und liegt NICHT im Repository. Ohne Schlüssel (lokal, Forks) wird mit dem Debug-Schlüssel signiert –
+// solche APKs lassen sich nicht als Update über die offizielle Version installieren.
+def releaseKeystore = System.getenv('SCHULRADAR_KEYSTORE')
+def hasReleaseKey = releaseKeystore != null && new File(releaseKeystore).exists()
+def releaseKeyPassword = System.getenv('SCHULRADAR_KEYSTORE_PASSWORD') ?: 'schulradar'
+
 android {
     namespace = "at.schulradar.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -24,19 +31,21 @@ android {
     // Feste Signatur: damit lässt sich eine neue Version über die alte installieren,
     // ohne dass Anmeldungen und Daten verloren gehen.
     signingConfigs {
-        schulradar {
-            storeFile file('schulradar.keystore')
-            storePassword 'schulradar'
-            keyAlias 'schulradar'
-            keyPassword 'schulradar'
+        if (hasReleaseKey) {
+            schulradar {
+                storeFile new File(releaseKeystore)
+                storePassword releaseKeyPassword
+                keyAlias 'schulradar'
+                keyPassword releaseKeyPassword
+            }
         }
     }
     buildTypes {
         debug {
-            signingConfig signingConfigs.schulradar
+            if (hasReleaseKey) signingConfig signingConfigs.schulradar
         }
         release {
-            signingConfig signingConfigs.schulradar
+            signingConfig hasReleaseKey ? signingConfigs.schulradar : signingConfigs.debug
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
