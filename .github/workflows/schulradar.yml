@@ -73,7 +73,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "Schulradar ${GITHUB_REF_NAME#schulradar-v}" --notes "PC: Schulradar-Setup-…exe (Installer) oder die portable Version. Handy (Android): Schulradar-…apk. Anleitung: siehe schulradar/README.md." || true
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "Schulradar ${GITHUB_REF_NAME#schulradar-v}" --notes-file RELEASE.md || true
           gh release upload "$GITHUB_REF_NAME" dist/Schulradar-*.exe --clobber
 
   android:
@@ -119,5 +119,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "Schulradar ${GITHUB_REF_NAME#schulradar-v}" --notes "PC: Schulradar-Setup-…exe (Installer) oder die portable Version. Handy (Android): Schulradar-…apk. Anleitung: siehe schulradar/README.md." || true
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "Schulradar ${GITHUB_REF_NAME#schulradar-v}" --notes-file ../RELEASE.md || true
           gh release upload "$GITHUB_REF_NAME" dist/Schulradar-*.apk --clobber
