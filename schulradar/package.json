@@ -1,0 +1,73 @@
+{
+  "name": "schulradar",
+  "productName": "Schulradar",
+  "version": "1.0.0",
+  "description": "Alle Aufgaben und Termine aus WebUntis, MS Teams, Letto und Eduvidual in einer Übersicht.",
+  "main": "src/main/main.js",
+  "author": "Schulradar",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "demo": "electron . --demo",
+    "test": "node --test \"test/*.test.js\" \"test/*.test.mjs\"",
+    "icons": "node scripts/make-icons.js",
+    "dist": "electron-builder --win --x64 --publish never",
+    "test:e2e": "node test/e2e/run.js"
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "jsdom": "^30.1.1"
+  },
+  "homepage": "https://github.com/vachaphil07-glitch/8z88ozv",
+  "build": {
+    "appId": "at.schulradar.app",
+    "productName": "Schulradar",
+    "copyright": "Schulradar",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "artifactName": "Schulradar-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Schulradar",
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "Schulradar-Setup-${version}.exe"
+    },
+    "portable": {
+      "artifactName": "Schulradar-${version}-portable.exe"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vachaphil07-glitch/8z88ozv.git"
+  }
+}

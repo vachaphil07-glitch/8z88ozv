@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Schulradar</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand drag">
+          <span class="brand-logo" id="brand-logo"></span>
+          <div class="brand-text">
+            <strong>Schulradar</strong>
+            <small id="school-name">HTL Hollabrunn</small>
+          </div>
+        </div>
+        <nav class="nav" id="nav"></nav>
+        <div class="side-section">
+          <div class="side-label">Plattformen</div>
+          <div id="source-list" class="source-list"></div>
+        </div>
+        <div class="side-footer" id="side-footer"></div>
+      </aside>
+      <main class="main">
+        <header class="topbar drag">
+          <div class="topbar-title">
+            <h1 id="view-title">Übersicht</h1>
+            <span id="view-subtitle"></span>
+          </div>
+          <div class="topbar-actions no-drag" id="topbar-actions"></div>
+        </header>
+        <div class="view" id="view"></div>
+      </main>
+    </div>
+    <div id="modal-root"></div>
+    <div id="toast-root" class="toast-root"></div>
+  </body>
+</html>

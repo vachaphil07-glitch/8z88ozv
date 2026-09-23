@@ -1,0 +1,77 @@
+name: Schulradar
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'schulradar/**'
+      - '.github/workflows/schulradar.yml'
+    tags:
+      - 'schulradar-v*'
+  pull_request:
+    paths:
+      - 'schulradar/**'
+      - '.github/workflows/schulradar.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: schulradar
+
+jobs:
+  test:
+    name: Tests (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: schulradar/package-lock.json
+      - run: npm ci
+      - name: Unit-Tests
+        run: npm test
+        env:
+          TZ: Europe/Vienna
+      - name: Ende-zu-Ende-Test (App gegen nachgebaute Plattformen)
+        run: npm run test:e2e
+
+  windows:
+    name: Windows-Installer
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: schulradar/package-lock.json
+      - run: npm ci
+      - name: Unit-Tests
+        run: npm test
+      - name: Ende-zu-Ende-Test unter Windows
+        run: npm run test:e2e
+      - name: Installer bauen
+        run: npm run dist
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Schulradar-Windows
+          path: |
+            schulradar/dist/Schulradar-Setup-*.exe
+            schulradar/dist/Schulradar-*-portable.exe
+          if-no-files-found: error
+      - name: Release veröffentlichen
+        if: startsWith(github.ref, 'refs/tags/schulradar-v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $files = Get-ChildItem dist -Filter *.exe | Where-Object { $_.Name -like 'Schulradar-*' } | ForEach-Object { $_.FullName }
+          gh release create "$env:GITHUB_REF_NAME" $files --title "Schulradar $($env:GITHUB_REF_NAME -replace 'schulradar-v','')" --notes "Windows-Installer (Schulradar-Setup-…exe) und portable Version ohne Installation. Anleitung: siehe schulradar/README.md."

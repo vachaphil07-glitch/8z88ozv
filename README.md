@@ -1,3 +1,6 @@
+> **Schulradar** (Ordner [`schulradar/`](schulradar/README.md)): Alle Aufgaben, Abgaben und Tests aus WebUntis,
+> MS Teams, Letto und Eduvidual in einer Windows-App, mit Erinnerungen, Wochen- und Monatsansicht.
+
 # NOVA DECK
 
 Ein futuristisches Desktop-Cockpit für Windows – **eine einzige Datei**, kein Setup,
