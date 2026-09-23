@@ -81,6 +81,13 @@ function mergeDefaults(defaults, value) {
   return out;
 }
 
+/** Alte Einstellungen an neue Versionen anpassen. */
+function migrate(data) {
+  const teams = data.settings.platforms.teams;
+  if (!teams.url || presets.teams.legacyUrls.includes(teams.url)) teams.url = presets.teams.url;
+  return data;
+}
+
 class Store {
   constructor(dir) {
     this.dir = dir;
@@ -93,7 +100,7 @@ class Store {
     for (const file of [this.file, this.file + '.bak']) {
       try {
         const raw = fs.readFileSync(file, 'utf8');
-        return mergeDefaults(defaultData(), JSON.parse(raw));
+        return migrate(mergeDefaults(defaultData(), JSON.parse(raw)));
       } catch (err) {
         if (err.code !== 'ENOENT') console.warn('Konnte Daten nicht lesen:', file, err.message);
       }

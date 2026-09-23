@@ -67,6 +67,14 @@ test('Abgabestatus aus separater Antwort mit assignmentId', () => {
   assert.equal(items[0].course, 'KSN');
 });
 
+test('Welche Antworten mitgelesen werden', () => {
+  const { isCandidate } = require('../src/main/connectors/teams');
+  assert.ok(isCandidate('https://teams.cloud.microsoft/api/whatever', 'application/json'));
+  assert.ok(isCandidate('https://assignments.onenote.com/api/v1.0/edu/me/assignments', 'text/plain'));
+  assert.ok(!isCandidate('https://teams.cloud.microsoft/api/chatsvc/emea/v1/users/ME/conversations', 'application/json'));
+  assert.ok(!isCandidate('https://statics.teams.cdn.office.net/app.js', 'application/javascript'));
+});
+
 test('Erkennung von Aufgaben-Schnittstellen', () => {
   assert.ok(isAssignmentApi('https://assignments.onenote.com/api/v1.0/edu/me/assignments?$top=20'));
   assert.ok(isAssignmentApi('https://graph.microsoft.com/v1.0/education/me/assignments'));

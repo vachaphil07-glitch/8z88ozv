@@ -117,7 +117,27 @@ function isAssignmentApi(url) {
   if (!/^https:|^http:\/\/(localhost|127\.0\.0\.1)[:/]/i.test(url)) return false;
   if (/\.(js|css|png|jpe?g|gif|svg|woff2?|ttf|ico|map)(\?|$)/i.test(url)) return false;
   if (/telemetry|browser\.events|\/aria|collector|\/ping|\/trace/i.test(url)) return false;
-  return /assignments\.onenote\.com|\/education\/|\/edu\/|assignment/i.test(url);
+  return /assignments\.onenote\.com|\/education\/|\/edu\/|assignment|zuweisung/i.test(url);
+}
+
+/** Welche Antworten werden mitgelesen? Aufgaben-Adressen immer, sonst jedes JSON (wird danach geprüft). */
+function isCandidate(url, mime) {
+  if (!/^https:|^http:\/\/(localhost|127\.0\.0\.1)[:/]/i.test(url)) return false;
+  if (/\.(js|css|png|jpe?g|gif|svg|woff2?|ttf|ico|map|html?)(\?|$)/i.test(url)) return false;
+  if (/telemetry|browser\.events|\/aria|collector|\/ping|\/trace|presence|\/chatsvc\/|\/messages/i.test(url)) return false;
+  return isAssignmentApi(url) || /json/i.test(mime || '');
+}
+
+/** Merkt sich gesehene Adressen (ohne Parameter) für die Diagnose. */
+function urlTracker() {
+  const seen = new Set();
+  return {
+    add(url, mime) {
+      if (seen.size >= 150 || !/json|javascript|text\/plain/i.test(mime || '')) return;
+      if (/json/i.test(mime)) seen.add(url.split('?')[0]);
+    },
+    list: () => [...seen]
+  };
 }
 
 // ---------------------------------------------------------------- Webansicht
@@ -134,50 +154,144 @@ function clickWebAppButton() {
   return false;
 }
 
+/** Öffnet in Teams links die App „Zuweisungen“ (Assignments). */
+function clickAssignmentsApp(appId) {
+  const visible = (e) => Boolean(e && (e.offsetWidth || e.offsetHeight || e.getClientRects().length));
+  const byId = Array.from(document.querySelectorAll(`[data-tid*="${appId}"],[id*="${appId}"],[data-app-id*="${appId}"],[data-appid*="${appId}"]`)).find(visible);
+  if (byId) {
+    (byId.closest('button,[role=button],[role=tab],a') || byId).click();
+    return 'app-id';
+  }
+  const re = /^(zuweisungen|assignments)\b/i;
+  const els = Array.from(document.querySelectorAll('button,[role=button],[role=tab],[role=menuitem],[role=menuitemradio],a')).filter(visible);
+  const el = els.find((e) => re.test((e.getAttribute('aria-label') || '').trim()) || re.test((e.innerText || '').trim()) || re.test((e.title || '').trim()));
+  if (el) {
+    el.click();
+    return 'text';
+  }
+  return null;
+}
+
+function pageInfo() {
+  return { url: location.href.split('?')[0], title: document.title, text: (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').slice(0, 300) };
+}
+
+// Daten, die beim Anmelden im sichtbaren Teams-Fenster mitgelesen wurden
+let loginCapture = null;
+
+function isLoginUrl(url) {
+  return /login\.microsoftonline\.com|login\.live\.com|login\.windows\.net|login\.microsoft\.com|\/oauth2\//i.test(url);
+}
+
 async function syncWeb(ctx) {
+  const target = String(ctx.settings.url || presets.teams.url);
+  const appId = presets.teams.assignmentsAppId;
+
+  // Frisch im Anmeldefenster mitgelesene Aufgaben direkt verwenden
+  if (loginCapture && Date.now() - loginCapture.at < 15 * 60 * 1000) {
+    const parsed = extractAssignments(loginCapture.docs);
+    if (parsed.assignments.length) {
+      loginCapture = null;
+      ctx.log(`${parsed.assignments.length} Aufgaben aus dem Anmeldefenster übernommen.`);
+      return { items: toItems(parsed, { from: ctx.range.from, link: target }) };
+    }
+  }
+
   const docs = [];
   let lastData = 0;
-  const target = String(ctx.settings.url || presets.teams.url);
+  const tracker = urlTracker();
   return withHiddenWindow(async (win) => {
     const stop = await captureJson(win, {
-      match: isAssignmentApi,
+      match: isCandidate,
+      onSeen: (url, mime) => tracker.add(url, mime),
       onJson: (url, json) => {
+        const hasAssignments = extractAssignments([json]).assignments.length > 0;
+        if (!hasAssignments && !isAssignmentApi(url)) return;
         docs.push(json);
         lastData = Date.now();
-        ctx.log(`Daten empfangen: ${url.split('?')[0]}`);
+        ctx.log(`Daten empfangen: ${url.split('?')[0]}${hasAssignments ? ' (mit Aufgaben)' : ''}`);
         if (docs.length <= 4) ctx.sample(`antwort_${docs.length}`, { url: url.split('?')[0], json });
       }
     });
+    let opened = null;
     try {
-      ctx.log('Öffne Teams im Hintergrund …');
+      ctx.log(`Öffne Teams im Hintergrund: ${target}`);
       await loadUrl(win, target, 60000);
       ctx.log(`Seite geladen: ${win.webContents.getURL().split('?')[0]}`);
       const started = Date.now();
       let loginSince = 0;
       let clicks = 0;
-      while (Date.now() - started < 100000) {
+      let appClicks = 0;
+      let lastAppClick = 0;
+      while (Date.now() - started < 120000) {
         await sleep(1500);
         if (win.isDestroyed()) break;
         const url = win.webContents.getURL();
-        if (/login\.microsoftonline\.com|login\.live\.com|login\.windows\.net|\/oauth2\//i.test(url)) {
+        if (isLoginUrl(url)) {
           loginSince = loginSince || Date.now();
-          if (Date.now() - loginSince > 15000) throw new LoginRequiredError('Teams: Bitte bei Microsoft anmelden.');
+          if (Date.now() - loginSince > 15000) throw new LoginRequiredError('Teams: Bitte unter Plattformen → MS Teams neu anmelden.');
           continue;
         }
         loginSince = 0;
         if (clicks < 3 && (await evalIn(win, clickWebAppButton))) clicks++;
-        if (docs.length && Date.now() - lastData > 7000) break;
+        const found = extractAssignments(docs).assignments.length;
+        // Teams lädt die Aufgaben erst, wenn "Zuweisungen" geöffnet ist
+        if (!found && appClicks < 6 && Date.now() - lastAppClick > 8000 && Date.now() - started > 6000) {
+          const how = await evalIn(win, clickAssignmentsApp, appId);
+          if (how) {
+            opened = how;
+            appClicks++;
+            lastAppClick = Date.now();
+            ctx.log(`„Zuweisungen“ geöffnet (${how}).`);
+          }
+        }
+        if (docs.length && Date.now() - lastData > 7000 && (found || Date.now() - started > 60000)) break;
       }
     } finally {
       stop();
-    }
-    if (!docs.length) {
-      throw new Error('Teams: Keine Aufgaben-Daten gefunden. Bitte unter Plattformen → Teams „Anmelden“ wählen und in Teams einmal „Aufgaben“ öffnen.');
+      ctx.sample('gesehene_adressen', tracker.list());
+      ctx.sample('seite', await evalIn(win, pageInfo));
     }
     const parsed = extractAssignments(docs);
+    if (!docs.length) {
+      ctx.log(`Keine Aufgaben-Daten. Zuweisungen-Knopf ${opened ? 'gefunden' : 'NICHT gefunden'}.`);
+      throw new Error(
+        opened
+          ? 'Teams: „Zuweisungen“ wurde geöffnet, aber keine Aufgaben-Daten erkannt. Bitte unter Plattformen → MS Teams „Diagnose“ speichern und schicken.'
+          : 'Teams: „Zuweisungen“ nicht gefunden. Bitte unter Plattformen → MS Teams „Anmelden“ wählen, links „Zuweisungen“ öffnen und das Fenster schließen.'
+      );
+    }
     ctx.log(`${parsed.assignments.length} Aufgaben in ${docs.length} Antworten gefunden.`);
     return { items: toItems(parsed, { from: ctx.range.from, link: target }) };
   });
+}
+
+/** Im sichtbaren Anmeldefenster mitlesen: Sobald „Zuweisungen“ geöffnet wird, sind die Aufgaben da. */
+async function onLoginWindow(ctx, win, notify) {
+  const docs = [];
+  let announced = false;
+  const tracker = urlTracker();
+  const stop = await captureJson(win, {
+    match: isCandidate,
+    onSeen: (url, mime) => tracker.add(url, mime),
+    onJson: (url, json) => {
+      const hasAssignments = extractAssignments([json]).assignments.length > 0;
+      if (!hasAssignments && !isAssignmentApi(url)) return;
+      docs.push(json);
+      loginCapture = { docs, at: Date.now() };
+      ctx.log(`Anmeldefenster: Daten von ${url.split('?')[0]}${hasAssignments ? ' (mit Aufgaben)' : ''}`);
+      if (docs.length <= 4) ctx.sample(`anmeldefenster_${docs.length}`, { url: url.split('?')[0], json });
+      const count = extractAssignments(docs).assignments.length;
+      if (count && !announced) {
+        announced = true;
+        notify(`Teams: ${count} Aufgaben gefunden – du kannst das Fenster jetzt schließen.`);
+      }
+    }
+  });
+  return () => {
+    stop();
+    ctx.sample('anmeldefenster_adressen', tracker.list());
+  };
 }
 
 // ---------------------------------------------------------------- Microsoft Graph (optional)
@@ -304,7 +418,7 @@ const connector = {
   id: 'teams',
   name: 'MS Teams',
   color: '#6264A7',
-  description: 'Aufgaben aus der Teams-App „Aufgaben“ mit Abgabestatus.',
+  description: 'Aufgaben aus „Zuweisungen“ (Assignments) mit Abgabestatus.',
 
   origins() {
     return ['https://teams.microsoft.com', 'https://teams.cloud.microsoft', 'https://assignments.onenote.com'];
@@ -324,6 +438,7 @@ const connector = {
   },
 
   graphConnect,
+  onLoginWindow,
 
   async logout(ctx) {
     ctx.secrets.set('graph', null);
@@ -335,3 +450,5 @@ module.exports = connector;
 module.exports.extractAssignments = extractAssignments;
 module.exports.toItems = toItems;
 module.exports.isAssignmentApi = isAssignmentApi;
+module.exports.isCandidate = isCandidate;
+module.exports.clickAssignmentsApp = clickAssignmentsApp;

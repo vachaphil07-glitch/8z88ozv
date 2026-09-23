@@ -58,8 +58,19 @@ function openLoginWindow({ connector, ctx, icon, onMessage, onClosed }) {
   win.webContents.on('did-finish-load', check);
   const timer = setInterval(check, 2500);
 
+  // z. B. Teams: Daten schon im sichtbaren Fenster mitlesen
+  let detach = null;
+  if (connector.onLoginWindow) {
+    Promise.resolve(connector.onLoginWindow(ctx, win, onMessage))
+      .then((fn) => {
+        detach = fn;
+      })
+      .catch(() => {});
+  }
+
   win.on('closed', () => {
     clearInterval(timer);
+    if (detach) detach();
     open.delete(connector.id);
     onClosed();
   });

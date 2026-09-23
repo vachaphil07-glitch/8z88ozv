@@ -72,7 +72,7 @@ erneute Anmeldung nötig.
 
 ### MS Teams: Aufgaben mit Abgabestatus
 **Anmelden** klicken, mit dem Schulkonto anmelden und „Angemeldet bleiben“ bestätigen. Danach in Teams
-einmal **Aufgaben** öffnen und das Fenster schließen. Schulradar öffnet Teams ab dann unsichtbar im
+links auf **Zuweisungen** klicken. Sobald die Aufgaben erkannt sind, erscheint eine Meldung, dann das Fenster schließen. Schulradar öffnet Teams ab dann unsichtbar im
 Hintergrund und liest die Aufgabenliste mit, die Teams selbst lädt.
 
 *Optional:* Hat die Schul-IT eine App-Registrierung für Microsoft Graph freigegeben, kann man stattdessen

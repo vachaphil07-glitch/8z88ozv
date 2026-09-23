@@ -14,8 +14,11 @@ module.exports = {
     url: 'https://letto.htl-hl.ac.at/'
   },
   teams: {
-    // Deep-Link auf die Teams-App "Aufgaben" (Assignments)
-    url: 'https://teams.microsoft.com/l/app/66aeee93-507d-479a-a3ef-8f494af43945',
+    // Neues Teams im Browser. Die App "Zuweisungen" (Assignments) öffnet Schulradar dann selbst.
+    url: 'https://teams.cloud.microsoft/',
+    // frühere Standardadressen – werden beim Laden automatisch ersetzt
+    legacyUrls: ['https://teams.microsoft.com/l/app/66aeee93-507d-479a-a3ef-8f494af43945'],
+    assignmentsAppId: '66aeee93-507d-479a-a3ef-8f494af43945',
     tenant: 'organizations'
   }
 };

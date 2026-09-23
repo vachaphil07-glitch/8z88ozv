@@ -164,7 +164,7 @@ async function waitFor(win, check, { timeout = 30000, interval = 700 } = {}) {
  * Schneidet JSON-Antworten mit, die eine Seite (inkl. eingebetteter iframes) lädt.
  * Nutzt das Chrome DevTools Protocol, damit auch Tokens mit Sonderschutz funktionieren.
  */
-async function captureJson(win, { match, onJson }) {
+async function captureJson(win, { match, onJson, onSeen = () => {} }) {
   const dbg = win.webContents.debugger;
   try {
     dbg.attach('1.3');
@@ -190,7 +190,8 @@ async function captureJson(win, { match, onJson }) {
       enable(params.sessionId);
     } else if (method === 'Network.responseReceived') {
       const r = params.response || {};
-      if (/json/i.test(r.mimeType || '') && match(r.url || '')) {
+      onSeen(r.url || '', r.mimeType || '');
+      if (match(r.url || '', r.mimeType || '')) {
         pending.set(`${sessionId || ''}|${params.requestId}`, { url: r.url, sessionId, status: r.status });
       }
     } else if (method === 'Network.loadingFinished') {
@@ -202,7 +203,13 @@ async function captureJson(win, { match, onJson }) {
         .sendCommand('Network.getResponseBody', { requestId: params.requestId }, p.sessionId || undefined)
         .then((res) => {
           const text = res.base64Encoded ? Buffer.from(res.body, 'base64').toString('utf8') : res.body;
-          onJson(p.url, JSON.parse(text), p.status);
+          let json;
+          try {
+            json = JSON.parse(text);
+          } catch (_) {
+            return; // kein JSON
+          }
+          onJson(p.url, json, p.status);
         })
         .catch(() => {});
     }

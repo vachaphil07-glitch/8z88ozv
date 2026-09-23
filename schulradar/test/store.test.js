@@ -21,6 +21,15 @@ test('Fehlende Einstellungen werden nach Updates ergänzt', () => {
   assert.deepEqual(merged.settings.reminders.leadHours, [24, 3]);
 });
 
+test('Alte Teams-Adresse wird auf teams.cloud.microsoft umgestellt', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'schulradar-test-'));
+  fs.writeFileSync(
+    path.join(dir, 'schulradar-daten.json'),
+    JSON.stringify({ settings: { platforms: { teams: { url: 'https://teams.microsoft.com/l/app/66aeee93-507d-479a-a3ef-8f494af43945' } } } })
+  );
+  assert.equal(new Store(dir).settings.platforms.teams.url, 'https://teams.cloud.microsoft/');
+});
+
 test('Speichern und Laden', () => {
   const { store, dir } = tempStore();
   store.updateSettings({ theme: 'light', platforms: { letto: { dashboardUrl: 'https://x/dashboard' } } });

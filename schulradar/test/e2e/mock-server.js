@@ -206,7 +206,21 @@ async function letto(req, res, url, raw, now) {
 
 function teams(req, res, url, raw, now, port) {
   if (url.pathname === '/teams/app') {
-    return html(res, `<h1>Teams</h1><iframe src="http://127.0.0.1:${port}/assignments/app" width="800" height="400"></iframe>`);
+    // wie das neue Teams: die Aufgaben laden erst, wenn links „Zuweisungen“ angeklickt wird
+    return html(
+      res,
+      `<nav><button aria-label="Aktivität">Aktivität</button><button id="app-bar-66aeee93-507d-479a-a3ef-8f494af43945" aria-label="Zuweisungen">Zuweisungen</button></nav>
+      <main id="main"><h1>Teams</h1></main>
+      <script>
+        fetch('/teams/api/me').then(r => r.json());
+        document.getElementById('app-bar-66aeee93-507d-479a-a3ef-8f494af43945').onclick = () => {
+          document.getElementById('main').innerHTML = '<iframe src="http://127.0.0.1:${port}/assignments/app" width="800" height="400"></iframe>';
+        };
+      </script>`
+    );
+  }
+  if (url.pathname === '/teams/api/me') {
+    return json(res, { id: 'u1', displayName: 'Max M', title: 'Schüler' });
   }
   if (url.pathname === '/assignments/app') {
     return html(res, `<div id="list">Lade Aufgaben …</div><script>

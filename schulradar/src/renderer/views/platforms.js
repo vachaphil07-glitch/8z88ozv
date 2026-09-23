@@ -209,13 +209,13 @@ function teamsBody(ctx, p) {
     body.push(
       steps(
         'Auf „Anmelden“ klicken und mit dem Schulkonto bei Microsoft anmelden („Angemeldet bleiben“ bestätigen).',
-        'Warten, bis Teams geladen ist, und links einmal „Aufgaben“ öffnen.',
+        'Warten, bis Teams geladen ist, und links auf „Zuweisungen“ klicken. Sobald die Aufgaben erkannt sind, erscheint unten eine Meldung.',
         'Fenster schließen – Schulradar liest die Aufgaben ab jetzt im Hintergrund.'
       ),
       h('div', { class: 'form-actions' }, h('button', { class: 'btn btn-primary', onclick: () => ctx.api.login('teams') }, icon('login'), 'Anmelden')),
       advanced(
         'Teams-Adresse',
-        field(ctx, 'teams', 'url', { label: 'Adresse der Aufgaben-Seite', value: s.url }),
+        field(ctx, 'teams', 'url', { label: 'Teams-Adresse', value: s.url, placeholder: 'https://teams.cloud.microsoft/' }),
         h('div', { class: 'form-actions' }, saveButton('Übernehmen', () => ctx.actions.updatePlatform('teams', { url: (d.url ?? s.url).trim() }), false))
       )
     );
