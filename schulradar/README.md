@@ -26,7 +26,7 @@ Voreingestellt für die **HTL Hollabrunn**; für andere Schulen lassen sich alle
 - **Selbst abhaken**: Alles lässt sich zusätzlich in der App abhaken.
 - **Tests & Schularbeiten** aus WebUntis werden hervorgehoben (auch „Tests in 7 Tagen“ oben).
 - **Wochen- und Monatsansicht**, in der Woche auf Wunsch mit dem Stundenplan aus WebUntis
-  (Entfall wird durchgestrichen).
+  als Zeitraster wie in WebUntis (Doppelstunden, Gruppen, Entfall, Änderung, Prüfung).
 - **Eigene Aufgaben** für Dinge, die nur mündlich angesagt wurden.
 - **Erinnerungen** als Windows-Benachrichtigung: am Vorabend von Tests und ganztägigen Abgaben,
   1 Tag und 3 Stunden vor Abgaben mit Uhrzeit, jeden Morgen eine kurze Übersicht. Alles einstellbar.

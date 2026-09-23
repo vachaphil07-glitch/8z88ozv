@@ -1224,11 +1224,32 @@ p {
   flex: 1;
 }
 
-.week-grid {
+.week-wrap {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+/* gleiche Spalten für Aufgaben-Karten und Stundenplan: Zeitachse + Mo–Fr + Sa/So */
+.week-cols {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr)) repeat(2, minmax(0, 0.72fr));
+  grid-template-columns: 46px repeat(5, minmax(0, 1fr)) repeat(2, minmax(0, 0.6fr));
   gap: 10px;
-  align-items: start;
+  min-width: 900px;
+}
+
+.week-grid {
+  align-items: stretch;
+}
+
+.week-gutter {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 14px;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .day-col {
@@ -1236,8 +1257,196 @@ p {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 10px;
-  min-height: 220px;
+  min-height: 110px;
   box-shadow: var(--shadow-sm);
+}
+
+/* ---------- Stundenplan-Raster (wie WebUntis) ---------- */
+
+.tt {
+  margin-top: 14px;
+}
+
+.tt-grid {
+  align-items: start;
+}
+
+.tt-axis {
+  position: relative;
+}
+
+.tt-label {
+  position: absolute;
+  right: 4px;
+  transform: translateY(-1px);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
+}
+
+.tt-label.is-end {
+  transform: translateY(-100%);
+}
+
+.tt-now-label {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  z-index: 3;
+}
+
+.tt-day {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.tt-day.is-weekend {
+  background: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, var(--surface) 6px 12px);
+}
+
+.tt-day.is-today {
+  border-color: var(--accent);
+}
+
+.tt-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--border);
+}
+
+.tt-line:first-child {
+  display: none;
+}
+
+.tt-now {
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  border-top: 2px solid var(--danger);
+  z-index: 2;
+}
+
+.tt-now::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+.tt-lesson {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 4px 6px 4px 9px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border-left: 4px solid var(--lc);
+  overflow: hidden;
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: var(--muted);
+  z-index: 1;
+}
+
+.tt-lesson > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tt-teacher {
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.tt-subject {
+  color: var(--text);
+}
+
+.tt-lesson.is-small {
+  flex-direction: row;
+  gap: 6px;
+  align-items: center;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+
+.tt-lesson > .tt-state {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+  padding: 0 5px;
+  border-radius: 4px;
+  overflow: visible;
+}
+
+.tt-lesson.is-narrow {
+  padding: 4px 3px 4px 6px;
+}
+
+.tt-lesson.is-narrow > .tt-state {
+  display: none;
+}
+
+.tt-day.is-free {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.tt-lesson.is-cancelled {
+  background: var(--danger-soft);
+  border-left-color: var(--danger);
+}
+
+.tt-lesson.is-cancelled .tt-teacher,
+.tt-lesson.is-cancelled .tt-subject,
+.tt-lesson.is-cancelled .tt-room {
+  text-decoration: line-through;
+}
+
+.tt-lesson.is-cancelled .tt-state {
+  background: var(--danger);
+  color: #fff;
+}
+
+.tt-lesson.is-changed {
+  background: var(--ok-soft);
+}
+
+.tt-lesson.is-changed .tt-state {
+  background: var(--ok);
+  color: #fff;
+}
+
+.tt-lesson.is-exam {
+  background: var(--warn-soft);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--warn) 60%, transparent);
+}
+
+.tt-lesson.is-exam .tt-state {
+  background: var(--warn);
+  color: #fff;
 }
 
 .day-col.is-weekend {
@@ -2142,9 +2351,6 @@ p {
   }
   .stats {
     grid-template-columns: repeat(2, 1fr);
-  }
-  .week-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .form-row {
     flex-direction: column;

@@ -35,34 +35,59 @@ function demoItems(now = Date.now()) {
   ].map((it) => ({ url: null, description: '', ...it, demo: true }));
 }
 
-const SUBJECTS = [
-  ['AM', 'R 204'], ['D', 'R 204'], ['E', 'R 204'], ['SEW', 'EDV 2'], ['NVS', 'EDV 3'],
-  ['DBI', 'EDV 2'], ['GGP', 'R 111'], ['ITP', 'Labor 1'], ['BSPK', 'R 204'], ['KSN', 'EDV 1']
+// Stundenplan wie bei einer 5. Klasse der HTL: Doppelstunden, Gruppenteilung, Nachmittag
+const COLORS = { ETE: '#e8590c', ETH: '#868e96', AM: '#94d82d', FTBT: '#868e96', MTSA: '#adb5bd', KOP: '#74c0fc', MEEM: '#e03131', D: '#f783ac', E: '#22b8cf', WIR: '#adb5bd', AIIT: '#51cf66', WPT3: '#40c057', LA: '#fcc419', ROBV: '#adb5bd' };
+// [Tag (0 = Mo), Beginn, Ende, Lehrkraft, Fach, Raum, Klasse, Zusatz]
+const DEMO_WEEK = [
+  [0, '07:50', '08:40', 'MAY', 'ETE', '5BHME'],
+  [0, '08:40', '09:30', 'SAL', 'ETH', '5BHME', '', 'changed'],
+  [0, '09:45', '10:35', 'LAN', 'AM', '5BHME'],
+  [0, '10:35', '11:25', 'HAR', 'FTBT', '5BHME'],
+  [0, '11:30', '13:10', 'HOF', 'MTSA', '5BHME'],
+  [1, '07:50', '11:25', 'EIS', 'KOP', 'EDV9', '5AHME'],
+  [1, '07:50', '11:25', 'LAM', 'KOP', '5AHME', '5AHME'],
+  [1, '07:50', '11:25', 'STO', 'KOP', 'EDV3', '5AHME'],
+  [1, '11:30', '13:10', 'BOC', 'MEEM', '5BHME'],
+  [1, '14:00', '16:35', 'EIS, GRA', 'LA', 'ELAE1', '5AHME'],
+  [2, '07:50', '08:40', 'SCH', 'D', '5BHME'],
+  [2, '08:40', '09:30', 'ROC', 'E', '2BHME', '5AHME'],
+  [2, '09:45', '10:35', 'LAN', 'AM', '5BHME', '', 'exam'],
+  [2, '10:35', '11:25', 'MAY', 'ETE', '5BHME'],
+  [2, '11:30', '12:20', 'SAL', 'ETH', '5BHME', '', 'cancelled'],
+  [3, '07:50', '08:40', 'ROC', 'E', '3AHME', '5AHME'],
+  [3, '08:40', '09:30', 'HOF', 'MTSA', '5BHME'],
+  [3, '09:45', '10:35', 'HUM', 'WIR', '5BHME'],
+  [3, '10:35', '13:10', 'BUR, FRL', 'WPT3', '5AHME'],
+  [4, '07:50', '08:40', 'HAR', 'FTBT', '5BHME'],
+  [4, '08:40', '09:30', 'SCH', 'D', '5BHME'],
+  [4, '09:45', '11:25', 'STE', 'AIIT', 'EDV2', '5AHME'],
+  [4, '11:30', '13:10', 'HUM', 'WIR', '5BHME'],
+  [4, '14:00', '15:45', 'HOE', 'ROBV', '5BHME']
 ];
 
 function demoTimetable(weekStart) {
-  const lessons = [];
-  const starts = [[8, 0], [8, 50], [9, 55], [10, 45], [11, 35], [12, 25]];
-  for (let day = 0; day < 5; day++) {
-    for (let slot = 0; slot < starts.length - (day === 4 ? 2 : 0); slot++) {
-      const [subject, room] = SUBJECTS[(day * 3 + slot) % SUBJECTS.length];
-      const s = new Date(weekStart + day * DAY);
-      s.setHours(starts[slot][0], starts[slot][1], 0, 0);
-      lessons.push({
-        id: `demo-${day}-${slot}`,
-        start: s.getTime(),
-        end: s.getTime() + 50 * 60000,
-        subject,
-        room,
-        teacher: '',
-        cancelled: day === 3 && slot === 5,
-        changed: day === 1 && slot === 2,
-        exam: false,
-        info: day === 3 && slot === 5 ? 'Entfall' : ''
-      });
-    }
-  }
-  return lessons;
+  const at = (day, hhmm) => {
+    const [h, m] = hhmm.split(':').map(Number);
+    const d = new Date(weekStart + day * DAY);
+    d.setHours(h, m, 0, 0);
+    return d.getTime();
+  };
+  return DEMO_WEEK.map(([day, from, to, teacher, subject, room, klasse = '', flag = ''], i) => ({
+    id: `demo-${i}`,
+    lessonId: i,
+    start: at(day, from),
+    end: at(day, to),
+    subject,
+    subjectLong: '',
+    teacher,
+    room,
+    klasse: klasse || room,
+    color: COLORS[subject] || '',
+    cancelled: flag === 'cancelled',
+    changed: flag === 'changed',
+    exam: flag === 'exam',
+    info: flag === 'cancelled' ? 'Entfall' : flag === 'changed' ? 'Supplierung' : flag === 'exam' ? 'Test' : ''
+  }));
 }
 
 module.exports = { demoItems, demoTimetable, startOfWeek };

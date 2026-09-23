@@ -76,3 +76,28 @@ test('Texte: Fälligkeit, Wochennummer, Titel', () => {
   assert.equal(L.displayTitle({ type: 'exam', title: 'Schularbeit AM', subject: 'AM' }), 'Schularbeit AM');
   assert.equal(L.monthGrid(L.startOfMonth(NOW)).length, 42);
 });
+
+test('Stundenplan: Doppelstunden werden zusammengefasst, Gruppen nebeneinander gelegt', () => {
+  const l = (id, h1, m1, h2, m2, extra = {}) => ({ id, lessonId: 1, subject: 'KOP', teacher: 'EIS', room: 'EDV9', start: at(2026, 9, 22, h1, m1), end: at(2026, 9, 22, h2, m2), ...extra });
+  const merged = L.mergeLessons([
+    l('a', 7, 50, 8, 40),
+    l('b', 8, 40, 9, 30),
+    l('c', 9, 45, 10, 35), // über die Pause hinweg
+    l('d', 7, 50, 8, 40, { teacher: 'LAM', room: '5AHME', lessonId: 2 }),
+    l('e', 8, 40, 9, 30, { teacher: 'LAM', room: '5AHME', lessonId: 2 }),
+    l('f', 11, 30, 12, 20, { lessonId: 3, subject: 'MEEM', teacher: 'BOC', room: '5BHME' }),
+    l('g', 14, 0, 14, 50, { lessonId: 3, subject: 'MEEM', teacher: 'BOC', room: '5BHME' }) // Mittagspause: nicht zusammenfassen
+  ]);
+  const eis = merged.find((x) => x.teacher === 'EIS');
+  assert.equal(L.minuteOfDay(eis.start), 7 * 60 + 50);
+  assert.equal(L.minuteOfDay(eis.end), 10 * 60 + 35);
+  assert.equal(merged.filter((x) => x.subject === 'MEEM').length, 2);
+  const laid = L.layoutOverlaps(merged);
+  const byTeacher = (t) => laid.find((x) => x.teacher === t);
+  assert.equal(byTeacher('EIS').cols, 2);
+  assert.equal(byTeacher('LAM').cols, 2);
+  assert.notEqual(byTeacher('EIS').col, byTeacher('LAM').col);
+  assert.equal(laid.filter((x) => x.subject === 'MEEM').every((x) => x.cols === 1), true);
+  assert.equal(L.lessonColor({ subject: 'AM' }), L.lessonColor({ subject: 'AM' }));
+  assert.equal(L.lessonColor({ subject: 'AM', color: '#94d82d' }), '#94d82d');
+});

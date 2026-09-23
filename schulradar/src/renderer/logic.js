@@ -293,3 +293,74 @@ export function monthGrid(monthStart) {
   const first = startOfWeek(monthStart);
   return Array.from({ length: 42 }, (_, i) => addDays(first, i));
 }
+
+// ---------------------------------------------------------------- Stundenplan (Zeitraster wie in WebUntis)
+
+export function minuteOfDay(ms) {
+  const d = new Date(ms);
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+/**
+ * Fasst aufeinanderfolgende Einheiten derselben Stunde zu einem Block zusammen
+ * (z. B. Doppelstunden über eine Pause hinweg), wie WebUntis es anzeigt.
+ */
+export function mergeLessons(lessons, maxGapMin = 20) {
+  const sorted = [...lessons].filter((l) => l.start && l.end).sort((a, b) => a.start - b.start || a.end - b.end);
+  const out = [];
+  for (const l of sorted) {
+    const key = [l.lessonId ?? '', l.subject, l.teacher, l.room, l.klasse || '', Boolean(l.cancelled), Boolean(l.changed), Boolean(l.exam)].join('|');
+    let prev = null;
+    for (let i = out.length - 1; i >= 0; i--) {
+      const o = out[i];
+      if (o.key === key && startOfDay(o.start) === startOfDay(l.start) && l.start >= o.end && l.start - o.end <= maxGapMin * 60000) {
+        prev = o;
+        break;
+      }
+    }
+    if (prev) prev.end = Math.max(prev.end, l.end);
+    else out.push({ ...l, key });
+  }
+  return out;
+}
+
+/** Verteilt gleichzeitige Stunden (z. B. Gruppenteilung) nebeneinander: col / cols */
+export function layoutOverlaps(lessons) {
+  const sorted = [...lessons].sort((a, b) => a.start - b.start || b.end - a.end);
+  const result = [];
+  let cluster = [];
+  let clusterEnd = -Infinity;
+  const flush = () => {
+    const columns = [];
+    for (const ev of cluster) {
+      let c = columns.findIndex((end) => end <= ev.start);
+      if (c < 0) {
+        c = columns.length;
+        columns.push(0);
+      }
+      columns[c] = ev.end;
+      ev.col = c;
+    }
+    for (const ev of cluster) ev.cols = columns.length;
+    result.push(...cluster);
+    cluster = [];
+    clusterEnd = -Infinity;
+  };
+  for (const l of sorted) {
+    if (cluster.length && l.start >= clusterEnd) flush();
+    cluster.push({ ...l });
+    clusterEnd = Math.max(clusterEnd, l.end);
+  }
+  if (cluster.length) flush();
+  return result;
+}
+
+const LESSON_COLORS = ['#e8590c', '#1c7ed6', '#2f9e44', '#ae3ec9', '#f08c00', '#0c8599', '#e64980', '#5c940d', '#4263eb', '#d6336c', '#868e96', '#f59f00'];
+
+/** Farbe eines Fachs: aus WebUntis, sonst immer dieselbe Farbe pro Fachkürzel */
+export function lessonColor(lesson) {
+  if (lesson.color) return lesson.color;
+  let hash = 0;
+  for (const ch of String(lesson.subject || '')) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return LESSON_COLORS[hash % LESSON_COLORS.length];
+}

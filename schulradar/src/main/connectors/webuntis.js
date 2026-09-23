@@ -71,6 +71,12 @@ function parseExams(json, { personId } = {}) {
     });
 }
 
+/** Fachfarbe aus WebUntis ("f49f25" oder "#f49f25") */
+function untisColor(value) {
+  const m = String(value || '').trim().match(/^#?([0-9a-f]{6})$/i);
+  return m ? `#${m[1].toLowerCase()}` : '';
+}
+
 function parseTimetable(json, personId) {
   const data = json && json.data && json.data.result && json.data.result.data;
   if (!data) return [];
@@ -86,17 +92,22 @@ function parseTimetable(json, personId) {
           .filter(Boolean);
       const subject = named(PERSON_TYPES.SUBJECT)[0];
       const state = String(p.cellState || '');
+      const is = p.is || {};
+      const substituted = (p.elements || []).some((e) => /SUBSTITUTED|ABSENT/i.test(e.state || ''));
       return {
         id: p.id,
+        lessonId: p.lessonId !== undefined ? p.lessonId : null,
         start: untisToMs(p.date, p.startTime),
         end: untisToMs(p.date, p.endTime),
         subject: (subject && subject.name) || p.lessonText || '',
         subjectLong: (subject && subject.longName) || '',
         teacher: named(PERSON_TYPES.TEACHER).map((t) => t.name).join(', '),
         room: named(PERSON_TYPES.ROOM).map((r) => r.name).join(', '),
-        cancelled: /CANCEL/i.test(state) || Boolean(p.is && p.is.cancelled),
-        changed: /SUBST|ADDITIONAL|SHIFT|ROOMSUBST/i.test(state),
-        exam: /EXAM/i.test(state) || Boolean(p.is && p.is.exam),
+        klasse: named(PERSON_TYPES.KLASSE).map((k) => k.name).join(', '),
+        color: untisColor(p.backColor || (subject && subject.backColor)),
+        cancelled: /CANCEL/i.test(state) || Boolean(is.cancelled),
+        changed: /SUBST|ADDITIONAL|SHIFT|ROOMSUBST/i.test(state) || Boolean(is.substitution || is.additional || is.roomSubstitution) || substituted,
+        exam: /EXAM/i.test(state) || Boolean(is.exam),
         info: [p.lessonText, p.substText, p.periodText].filter(Boolean).join(' · ')
       };
     })

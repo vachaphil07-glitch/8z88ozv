@@ -62,12 +62,13 @@ test('Stundenplan aus weekly/data', () => {
         data: {
           elementPeriods: {
             5: [
-              { id: 2, date: 20260922, startTime: 850, endTime: 940, elements: [{ type: 3, id: 30 }, { type: 4, id: 40 }, { type: 2, id: 20 }], cellState: 'CANCEL', lessonText: '' },
+              { id: 2, date: 20260922, startTime: 850, endTime: 940, elements: [{ type: 1, id: 10 }, { type: 3, id: 30 }, { type: 4, id: 40 }, { type: 2, id: 20 }], cellState: 'CANCEL', lessonText: '' },
               { id: 1, date: 20260922, startTime: 800, endTime: 850, elements: [{ type: 3, id: 31 }, { type: 4, id: 41 }], cellState: 'STANDARD' }
             ]
           },
           elements: [
-            { type: 3, id: 30, name: 'AM', longName: 'Angewandte Mathematik' },
+            { type: 3, id: 30, name: 'AM', longName: 'Angewandte Mathematik', backColor: '94D82D' },
+            { type: 1, id: 10, name: '5BHME' },
             { type: 3, id: 31, name: 'D', longName: 'Deutsch' },
             { type: 4, id: 40, name: 'R204' },
             { type: 4, id: 41, name: 'R111' },
@@ -84,6 +85,9 @@ test('Stundenplan aus weekly/data', () => {
   assert.equal(lessons[1].cancelled, true);
   assert.equal(lessons[1].room, 'R204');
   assert.equal(lessons[1].teacher, 'HUB');
+  assert.equal(lessons[1].klasse, '5BHME');
+  assert.equal(lessons[1].color, '#94d82d');
+  assert.equal(lessons[0].color, '');
   assert.deepEqual(parseTimetable({ data: { error: {} } }, 5), []);
 });
 
