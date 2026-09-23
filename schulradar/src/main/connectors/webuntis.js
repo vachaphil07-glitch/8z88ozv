@@ -6,7 +6,7 @@
 //  2. Benutzername + Passwort (nur bei eigenem WebUntis-Passwort)
 //  3. Vorhandene Browser-Sitzung aus dem Anmeldefenster (läuft nach kurzer Zeit ab)
 const { fetchJson, HttpError, clearOrigins, setCookie: setPlatformCookie, evalIn } = require('../platform');
-const { LoginRequiredError, ConfigError, splitTitle, stripHtml } = require('./base');
+const { LoginRequiredError, ConfigError, splitTitle, stripHtml, hashId } = require('./base');
 const { untisToMs, toUntisDate, toIsoDate, addDays, startOfWeek, DAY } = require('../util/dates');
 const { totp } = require('../util/totp');
 
@@ -41,8 +41,19 @@ function parseHomeworks(json) {
   });
 }
 
+/** Kürzel wie „D“, „E-SA“ oder „AM“ sind kein brauchbarer Titel – dann „Schularbeit D“ usw. */
+function examTitle(name, examType, subject) {
+  const base = String(name || '').trim();
+  const fallback = [examType || 'Prüfung', subject].filter(Boolean).join(' ');
+  if (!base) return fallback;
+  const bare = base.toLowerCase().replace(/[\s_-]*(sa|schularbeit|test|lzk|prüfung)$/i, '');
+  if (base.length <= 4 || (subject && bare === String(subject).toLowerCase())) return fallback;
+  return base;
+}
+
 function parseExams(json, { personId } = {}) {
   const list = (json && json.data && json.data.exams) || (json && json.exams) || [];
+  const seen = new Set();
   return list
     .filter((e) => {
       if (!personId || !Array.isArray(e.assignedStudents) || e.assignedStudents.length === 0) return true;
@@ -51,9 +62,14 @@ function parseExams(json, { personId } = {}) {
     .map((e) => {
       const hasTime = e.startTime !== undefined && e.startTime !== null && e.startTime !== 0;
       const name = String(e.name || '').trim();
-      const title = name || [e.examType || 'Prüfung', e.subject].filter(Boolean).join(' ');
+      const title = examTitle(name, e.examType, e.subject);
+      // Manche WebUntis-Server liefern keine (oder dieselbe) Prüfungs-ID – dann aus Datum, Zeit und Fach bilden
+      const own = hashId(e.examDate, e.startTime, e.endTime, e.subject, e.examType, name);
+      let key = e.id !== undefined && e.id !== null && e.id !== '' && e.id !== 0 ? String(e.id) : own;
+      if (seen.has(key)) key = `${key}-${own}`;
+      seen.add(key);
       return {
-        id: `webuntis:exam:${e.id}`,
+        id: `webuntis:exam:${key}`,
         type: 'exam',
         title,
         examType: e.examType || '',

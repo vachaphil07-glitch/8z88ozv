@@ -55,6 +55,40 @@ test('Prüfungen: nur eigene, Titel-Ersatz und Uhrzeit', () => {
   assert.equal(wh.allDay, true);
 });
 
+test('Prüfungen ohne eigene ID bekommen trotzdem verschiedene IDs, Kürzel werden zu lesbaren Titeln', () => {
+  const exam = (o) => ({ examType: 'Schularbeit', teachers: ['SCHR'], rooms: ['EDV10'], startTime: 750, endTime: 1035, assignedStudents: [], ...o });
+  const json = {
+    data: {
+      exams: [
+        exam({ id: 0, name: 'D', subject: 'D', examDate: 20261007 }),
+        exam({ id: 0, name: 'E-SA', subject: 'E', examDate: 20261105 }),
+        exam({ name: 'AM', subject: 'AM', examDate: 20261130, startTime: 945, endTime: 1125 }),
+        exam({ id: 7, name: 'Schularbeit Kapitel 3–5', subject: 'AM', examDate: 20261201 }),
+        exam({ id: 7, name: 'Schularbeit Kapitel 3–5', subject: 'AM', examDate: 20261202 })
+      ]
+    }
+  };
+  const items = parseExams(json);
+  assert.equal(new Set(items.map((i) => i.id)).size, 5, 'alle IDs verschieden');
+  assert.deepEqual(items.map((i) => i.title), ['Schularbeit D', 'Schularbeit E', 'Schularbeit AM', 'Schularbeit Kapitel 3–5', 'Schularbeit Kapitel 3–5']);
+  assert.equal(items[3].id, 'webuntis:exam:7');
+  // gleiche Daten beim nächsten Abruf → gleiche IDs
+  assert.deepEqual(parseExams(json).map((i) => i.id), items.map((i) => i.id));
+});
+
+test('Speicher: doppelte IDs einer Plattform werden eindeutig gemacht', () => {
+  const { uniqueIds } = require('../src/main/store');
+  const out = uniqueIds([
+    { id: 'x', title: 'A', due: 1 },
+    { id: 'x', title: 'B', due: 2 },
+    { id: 'x', title: 'B', due: 2 },
+    { id: 'y', title: 'C', due: 3 }
+  ]);
+  assert.equal(new Set(out.map((i) => i.id)).size, 4);
+  assert.equal(out[0].id, 'x');
+  assert.equal(out[3].id, 'y');
+});
+
 test('Stundenplan aus weekly/data', () => {
   const json = {
     data: {

@@ -177,7 +177,7 @@ class Store {
   setItems(source, items, { pendingOnly = false } = {}) {
     const now = Date.now();
     const previous = this.data.items[source] || [];
-    const fresh = items.map((it) => ({ ...it, source, fetched: now }));
+    const fresh = uniqueIds(items).map((it) => ({ ...it, source, fetched: now }));
     if (pendingOnly) {
       const ids = new Set(fresh.map((i) => i.id));
       for (const old of previous) {
@@ -267,6 +267,27 @@ class Store {
   }
 }
 
+/**
+ * Jeder Eintrag braucht eine eigene ID – sonst gehen z. B. beim Aufklappen oder Abhaken mehrere
+ * Einträge gleichzeitig auf. Doppelte IDs bekommen einen Zusatz aus Titel und Datum.
+ */
+function uniqueIds(items) {
+  const seen = new Set();
+  return items.map((it) => {
+    if (!seen.has(it.id)) {
+      seen.add(it.id);
+      return it;
+    }
+    const text = `${it.title}|${it.due}|${it.end}|${it.subject || it.course || ''}`;
+    let h = 0;
+    for (let i = 0; i < text.length; i++) h = (Math.imul(h, 31) + text.charCodeAt(i)) | 0;
+    let id = `${it.id}~${(h >>> 0).toString(36)}`;
+    for (let n = 2; seen.has(id); n++) id = `${it.id}~${(h >>> 0).toString(36)}-${n}`;
+    seen.add(id);
+    return { ...it, id };
+  });
+}
+
 function mergeDeep(base, patch) {
   if (!isPlainObject(patch)) return patch === undefined ? base : patch;
   const out = { ...(isPlainObject(base) ? base : {}) };
@@ -274,4 +295,4 @@ function mergeDeep(base, patch) {
   return out;
 }
 
-module.exports = { Store, SOURCES, defaultData, mergeDefaults, mergeDeep };
+module.exports = { Store, SOURCES, defaultData, mergeDefaults, mergeDeep, uniqueIds };
