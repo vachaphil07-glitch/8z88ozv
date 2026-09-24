@@ -114,9 +114,18 @@ jobs:
           WANT_RELEASE: ${{ startsWith(github.ref, 'refs/tags/schulradar-v') || inputs.release }}
         run: |
           if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/schulradar-release.p12"
-            echo "SCHULRADAR_KEYSTORE=$RUNNER_TEMP/schulradar-release.p12" >> "$GITHUB_ENV"
-            echo "APK wird mit dem Schulradar-Schlüssel signiert."
+            # Leerzeichen/Zeilenumbrüche vom Einfügen entfernen, dann den Schlüssel vor dem Bauen prüfen
+            CLEAN=$(printf '%s' "$KEYSTORE_B64" | tr -d ' \r\n\t')
+            FILE="$RUNNER_TEMP/schulradar-release.p12"
+            echo "Secret ANDROID_KEYSTORE_BASE64: ${#CLEAN} Zeichen"
+            if ! printf '%s' "$CLEAN" | base64 -d > "$FILE" 2>/dev/null \
+              || ! keytool -list -storetype PKCS12 -keystore "$FILE" -storepass schulradar -alias schulradar > /dev/null 2>&1; then
+              echo "::error::Das Secret ANDROID_KEYSTORE_BASE64 ist unvollständig oder beschädigt (${#CLEAN} Zeichen). Bitte den kompletten Text (beginnt mit MIIK…, endet mit …==) neu eintragen."
+              exit 1
+            fi
+            echo "SCHULRADAR_KEYSTORE=$FILE" >> "$GITHUB_ENV"
+            echo "APK wird mit dem Schulradar-Schlüssel signiert:"
+            keytool -list -v -storetype PKCS12 -keystore "$FILE" -storepass schulradar -alias schulradar | grep -i 'SHA256:'
           elif [ "$WANT_RELEASE" = "true" ]; then
             echo "::error::Für ein Release fehlt das Secret ANDROID_KEYSTORE_BASE64 (Settings → Secrets and variables → Actions)."
             exit 1
