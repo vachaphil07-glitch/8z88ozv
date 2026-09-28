@@ -111,26 +111,40 @@ jobs:
       - name: Signaturschlüssel bereitstellen
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_PASS: ${{ secrets.SCHULRADAR_SCHLUESSEL }}
           WANT_RELEASE: ${{ startsWith(github.ref, 'refs/tags/schulradar-v') || inputs.release }}
         run: |
-          if [ -n "$KEYSTORE_B64" ]; then
-            # Leerzeichen/Zeilenumbrüche vom Einfügen entfernen, dann den Schlüssel vor dem Bauen prüfen
-            CLEAN=$(printf '%s' "$KEYSTORE_B64" | tr -d ' \r\n\t')
-            FILE="$RUNNER_TEMP/schulradar-release.p12"
-            echo "Secret ANDROID_KEYSTORE_BASE64: ${#CLEAN} Zeichen"
-            if ! printf '%s' "$CLEAN" | base64 -d > "$FILE" 2>/dev/null \
-              || ! keytool -list -storetype PKCS12 -keystore "$FILE" -storepass schulradar -alias schulradar > /dev/null 2>&1; then
-              echo "::error::Das Secret ANDROID_KEYSTORE_BASE64 ist unvollständig oder beschädigt (${#CLEAN} Zeichen). Bitte den kompletten Text (beginnt mit MIIK…, endet mit …==) neu eintragen."
-              exit 1
+          FILE="$RUNNER_TEMP/schulradar-release.p12"
+          check() { keytool -list -storetype PKCS12 -keystore "$FILE" -storepass schulradar -alias schulradar > /dev/null 2>&1; }
+          OK=false
+          # Weg 1 (empfohlen): verschlüsselter Schlüssel im Repository + kurzes Passwort als Secret SCHULRADAR_SCHLUESSEL
+          KEY_PASS=$(printf '%s' "$KEY_PASS" | tr -d ' \r\n\t')
+          if [ -n "$KEY_PASS" ]; then
+            export KEY_PASS
+            if openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in android/app/schulradar-release.p12.enc -out "$FILE" -pass env:KEY_PASS 2> /dev/null && check; then
+              OK=true
+            else
+              echo "::warning::Secret SCHULRADAR_SCHLUESSEL passt nicht (${#KEY_PASS} Zeichen, erwartet 24 im Format xxxx-xxxx-xxxx-xxxx-xxxx)."
             fi
+          fi
+          # Weg 2: kompletter Schlüssel als Base64 im Secret ANDROID_KEYSTORE_BASE64
+          if [ "$OK" = false ] && [ -n "$KEYSTORE_B64" ]; then
+            CLEAN=$(printf '%s' "$KEYSTORE_B64" | tr -d ' \r\n\t')
+            if printf '%s' "$CLEAN" | base64 -d > "$FILE" 2> /dev/null && check; then
+              OK=true
+            else
+              echo "::warning::Secret ANDROID_KEYSTORE_BASE64 ist unvollständig oder beschädigt (${#CLEAN} Zeichen, erwartet 3544)."
+            fi
+          fi
+          if [ "$OK" = true ]; then
             echo "SCHULRADAR_KEYSTORE=$FILE" >> "$GITHUB_ENV"
             echo "APK wird mit dem Schulradar-Schlüssel signiert:"
             keytool -list -v -storetype PKCS12 -keystore "$FILE" -storepass schulradar -alias schulradar | grep -i 'SHA256:'
           elif [ "$WANT_RELEASE" = "true" ]; then
-            echo "::error::Für ein Release fehlt das Secret ANDROID_KEYSTORE_BASE64 (Settings → Secrets and variables → Actions)."
+            echo "::error::Kein gültiger Signaturschlüssel. Bitte das Secret SCHULRADAR_SCHLUESSEL (Settings → Secrets and variables → Actions) mit dem 24-stelligen Passwort anlegen."
             exit 1
           else
-            echo "::warning::Secret ANDROID_KEYSTORE_BASE64 fehlt – die APK wird nur mit einem Test-Schlüssel signiert und lässt sich nicht als Update installieren."
+            echo "::warning::Kein Signaturschlüssel – die APK wird nur mit einem Test-Schlüssel signiert und lässt sich nicht als Update installieren."
           fi
       - name: APK bauen
         working-directory: schulradar/mobile/android

@@ -219,14 +219,12 @@ npm run preview    # Handy-Oberfläche im Browser ansehen: danach z. B. python3 
 npm run apk        # APK bauen (Android SDK + JDK 21) → android/app/build/outputs/apk/release/
 ```
 
-Die Versionsnummer der APK kommt aus `schulradar/package.json`. Der Signaturschlüssel liegt **nicht** im
-Repository, sondern als GitHub-Secret `ANDROID_KEYSTORE_BASE64` (PKCS12-Datei, Base64, Alias
-`schulradar`; optional `SCHULRADAR_KEYSTORE_PASSWORD`, sonst Passwort `schulradar`). Ohne das Secret – lokal
-oder in Forks – wird mit dem Debug-Schlüssel signiert; so eine APK lässt sich nicht als Update über die
-offizielle Version installieren. Ein Release bricht ohne Secret bewusst ab.
-Eigenen Schlüssel erzeugen:
-`keytool -genkeypair -storetype PKCS12 -keystore schulradar-release.p12 -alias schulradar -keyalg RSA -keysize 2048 -validity 10000`,
-dann `base64 -w0 schulradar-release.p12` als Secret hinterlegen.
+Die Versionsnummer der APK kommt aus `schulradar/package.json`. Der Signaturschlüssel liegt nur
+**verschlüsselt** im Repository (`mobile/android/app/schulradar-release.p12.enc`, AES-256, PBKDF2). Das
+Passwort dazu steht ausschließlich im GitHub-Secret `SCHULRADAR_SCHLUESSEL` (24 Zeichen). Alternativ kann der
+komplette Schlüssel als Base64 im Secret `ANDROID_KEYSTORE_BASE64` liegen (Alias `schulradar`, Passwort
+`schulradar`). Ohne gültigen Schlüssel – lokal oder in Forks – wird mit dem Debug-Schlüssel signiert; so eine
+APK lässt sich nicht als Update über die offizielle Version installieren. Ein Release bricht dann bewusst ab.
 
 Neue Version veröffentlichen: Version in `package.json` erhöhen, dann *Actions → Schulradar → Run workflow*
 mit Häkchen **„GitHub-Release erstellen“** (legt Tag `schulradar-vX.Y.Z` und Release mit .exe und .apk an).
