@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const presets = require('./presets');
 
-const SOURCES = ['webuntis', 'teams', 'letto', 'eduvidual', 'lms'];
+const SOURCES = ['webuntis', 'teams', 'letto', 'eduvidual', 'lms', 'gcal', 'gtasks'];
 
 function defaultData() {
   return {
@@ -58,6 +58,18 @@ function defaultData() {
           url: presets.lms.url,
           pages: [], // Seiten mit Aufgaben/Terminen (werden im Anmeldefenster erkannt)
           username: ''
+        },
+        gcal: {
+          enabled: false,
+          calendars: [], // [{id, name, host}] – die geheimen Adressen liegen bei den Zugangsdaten
+          remind: false // Erinnerungen auch für diese Termine
+        },
+        gtasks: {
+          enabled: false,
+          clientId: '',
+          knownLists: [], // [{id, title}] – vom letzten Abruf, für die Auswahl
+          hiddenLists: [], // Listen, die nicht angezeigt werden
+          defaultList: '' // Liste für neue Aufgaben ('' = Standardliste)
         }
       }
     },
@@ -68,6 +80,7 @@ function defaultData() {
       dismissed: {} // id -> Zeitpunkt, an dem ein Eintrag ausgeblendet wurde
     },
     ownTasks: [],
+    notes: [], // [{id, title, text, subject, itemId, pinned, color, created, updated}]
     reminders: { fired: {}, lastSummary: '' },
     timetable: {}
   };
@@ -236,6 +249,32 @@ class Store {
     this.save();
   }
 
+  saveNote(note) {
+    const list = this.data.notes;
+    const idx = list.findIndex((n) => n.id === note.id);
+    if (idx >= 0) list[idx] = { ...list[idx], ...note, updated: Date.now() };
+    else {
+      const id = `note:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+      list.push({ ...note, id, created: Date.now(), updated: Date.now() });
+    }
+    this.save();
+    return list;
+  }
+
+  deleteNote(id) {
+    this.data.notes = this.data.notes.filter((n) => n.id !== id);
+    this.save();
+  }
+
+  /** Eintrag einer Plattform kurz lokal ändern (z. B. sofort nach dem Abhaken in Google Tasks) */
+  patchItem(source, id, patch) {
+    const it = (this.data.items[source] || []).find((i) => i.id === id);
+    if (it) {
+      Object.assign(it, patch);
+      this.save();
+    }
+  }
+
   /** Alle Einträge für die Oberfläche, inklusive lokalem Status. */
   snapshot() {
     const items = [];
@@ -246,6 +285,7 @@ class Store {
     return {
       items,
       local: this.data.local,
+      notes: this.data.notes,
       sourceState: this.data.sourceState,
       settings: this.data.settings
     };

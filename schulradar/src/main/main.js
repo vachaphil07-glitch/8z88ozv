@@ -245,6 +245,11 @@ function registerIpc() {
   ipcMain.handle('items:restore-dismissed', () => ctrl.restoreDismissed());
   ipcMain.handle('own:save', (_e, task) => ctrl.saveOwnTask(task));
   ipcMain.handle('own:delete', (_e, id) => ctrl.deleteOwnTask(id));
+  ipcMain.handle('note:save', (_e, note) => ctrl.saveNote(note || {}));
+  ipcMain.handle('note:delete', (_e, id) => ctrl.deleteNote(id));
+  ipcMain.handle('gcal:add', (_e, url, name) => ctrl.gcalAdd(url, name));
+  ipcMain.handle('gcal:remove', (_e, id) => ctrl.gcalRemove(id));
+  ipcMain.handle('gtasks:connect', (_e, opts) => ctrl.gtasksConnect(opts || {}));
   ipcMain.handle('settings:update', (_e, patch) => ctrl.updateSettings(patch || {}));
   ipcMain.handle('creds:set', (_e, source, creds) => ctrl.setCredentials(source, creds || {}));
   ipcMain.handle('platform:logout', (_e, source) => ctrl.logout(source));

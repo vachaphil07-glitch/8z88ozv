@@ -54,6 +54,8 @@ function dateValue(ms) {
 
 export function openTaskDialog(ctx, task = {}) {
   const isEdit = Boolean(task.id);
+  const gtasks = (ctx.state.platforms || []).find((p) => p.id === 'gtasks');
+  const canGoogle = !isEdit && !ctx.state.demo && gtasks && gtasks.configured && ctx.state.settings.platforms.gtasks.enabled;
   const hasDate = Boolean(task.due);
   const hasTime = hasDate && !task.allDay;
   const form = h(
@@ -80,11 +82,19 @@ export function openTaskDialog(ctx, task = {}) {
           }
           due = dt.getTime();
         }
+        const target = canGoogle && f.target && f.target.value === 'gtasks' ? 'gtasks' : 'own';
+        const submit = e.target.querySelector('button[type=submit]');
+        if (submit) submit.disabled = true;
         ctx.api
-          .saveOwnTask({ id: task.id, title, subject: f.subject.value.trim(), kind: f.kind.value, due, allDay, description: f.description.value.trim() })
-          .then(() => {
+          .saveOwnTask({ id: task.id, title, subject: f.subject.value.trim(), kind: f.kind.value, due, allDay, description: f.description.value.trim(), target })
+          .then((res) => {
+            if (res && res.ok === false) {
+              if (submit) submit.disabled = false;
+              ctx.toast(res.error || 'Konnte nicht speichern.', 'error');
+              return;
+            }
             closeModal();
-            ctx.toast(isEdit ? 'Gespeichert.' : 'Eigene Aufgabe angelegt.', 'ok');
+            ctx.toast(isEdit ? 'Gespeichert.' : target === 'gtasks' ? 'In Google Tasks angelegt.' : 'Eigene Aufgabe angelegt.', 'ok');
           });
       }
     },
@@ -113,6 +123,19 @@ export function openTaskDialog(ctx, task = {}) {
       h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Uhrzeit (optional)'), h('input', { type: 'time', name: 'time', value: hasTime ? L.fmtTime(task.due) : '' }))
     ),
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Notiz'), h('textarea', { name: 'description', rows: 3, maxlength: 5000 }, task.description || '')),
+    canGoogle
+      ? h(
+          'label',
+          { class: 'field' },
+          h('span', { class: 'field-label' }, 'Speichern in'),
+          h(
+            'select',
+            { name: 'target', class: 'select' },
+            h('option', { value: 'own' }, 'Schulradar (nur hier)'),
+            h('option', { value: 'gtasks' }, 'Google Tasks (auch am Handy & in Gmail sichtbar, ohne Uhrzeit)')
+          )
+        )
+      : null,
     h(
       'div',
       { class: 'form-actions end' },
@@ -142,7 +165,7 @@ export function openTaskDialog(ctx, task = {}) {
 export function openItemDialog(ctx, item) {
   const status = L.effectiveStatus(item, ctx.state.local, ctx.now());
   const canCheck = !L.isAppointment(item) && !['submitted', 'graded'].includes(item.status);
-  const locallyDone = Boolean(ctx.state.local.done[item.id]);
+  const locallyDone = Boolean(ctx.state.local.done[item.id]) || (item.source === 'gtasks' && item.status === 'done');
   openModal(
     h(
       'div',

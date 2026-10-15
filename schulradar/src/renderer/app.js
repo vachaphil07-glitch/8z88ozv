@@ -6,6 +6,7 @@ import { renderWeek } from './views/week.js';
 import { renderMonth } from './views/month.js';
 import { renderPlatforms } from './views/platforms.js';
 import { renderSettings } from './views/settings.js';
+import { renderNotes, openNoteDialog } from './views/notes.js';
 import { openTaskDialog, openItemDialog, openOnboarding, confirmDialog, closeModal, toast } from './views/dialogs.js';
 import { closeCalendarMenu, closeCalendarMenuIfDetached } from './views/calendar-menu.js';
 import { icsCalendar, upcomingEvents } from './calendar.js';
@@ -16,6 +17,7 @@ const VIEWS = {
   list: { title: 'Übersicht', icon: 'list', render: renderList, search: true },
   week: { title: 'Woche', icon: 'week', render: renderWeek, search: true },
   month: { title: 'Monat', icon: 'month', render: renderMonth, search: true },
+  notes: { title: 'Notizen', icon: 'note', render: renderNotes, search: true },
   platforms: { title: 'Plattformen', icon: 'plug', render: renderPlatforms },
   settings: { title: 'Einstellungen', icon: 'settings', render: renderSettings }
 };
@@ -52,7 +54,8 @@ const ui = {
   selectedDay: null,
   timetable: {},
   drafts: {},
-  graph: {}
+  graph: {},
+  noteSubject: ''
 };
 
 let state = null;
@@ -105,7 +108,10 @@ actions.toggleSource = (source) => {
 
 actions.toggleDone = (item, done) => {
   // sofort anzeigen, der Hauptprozess bestätigt kurz danach
-  if (done) state.local.done[item.id] = Date.now();
+  if (item.source === 'gtasks' && !state.demo) {
+    delete state.local.done[item.id];
+    item.status = done ? 'done' : 'open';
+  } else if (done) state.local.done[item.id] = Date.now();
   else delete state.local.done[item.id];
   render();
   api.setDone(item.id, done);
@@ -128,6 +134,8 @@ actions.deleteTask = async (task) => {
   }
 };
 actions.showItem = (item) => openItemDialog(ctx, item);
+actions.newNote = (preset = {}) => openNoteDialog(ctx, preset);
+actions.editNote = (note) => openNoteDialog(ctx, note);
 
 actions.updateSettings = (patch) => api.updateSettings(patch).then(applyState);
 actions.updatePlatform = (id, patch) => actions.updateSettings({ platforms: { [id]: patch } });
@@ -478,7 +486,7 @@ document.addEventListener('keydown', (e) => {
   } else if ((mod && e.key.toLowerCase() === 'r') || e.key === 'F5') {
     e.preventDefault();
     actions.sync();
-  } else if (mod && /^[1-5]$/.test(e.key)) {
+  } else if (mod && /^[1-6]$/.test(e.key)) {
     e.preventDefault();
     actions.go(Object.keys(VIEWS)[Number(e.key) - 1]);
   }

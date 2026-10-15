@@ -3083,3 +3083,232 @@ p {
 .set-note {
   padding: 8px 0 2px;
 }
+
+/* ---------------------------------------------------------------- Notizen */
+
+.notes-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.note-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.note-card {
+  --note: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 14px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--note);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.note-card:hover,
+.note-card:focus-visible {
+  border-color: var(--border-strong);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+.note-card.is-pinned {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.note-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.note-head h3 {
+  flex: 1;
+  font-size: 15px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.note-head .icon-btn {
+  width: 26px;
+  height: 26px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--faint);
+  flex: none;
+}
+
+.note-head .icon-btn.is-active {
+  color: var(--accent);
+}
+
+.note-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  max-height: 220px;
+  overflow: hidden;
+}
+
+.note-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.note-foot .chip {
+  height: 24px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.chip-link .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.note-date {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.note-yellow { --note: color-mix(in srgb, #fab005 16%, var(--surface)); }
+.note-green { --note: color-mix(in srgb, #40c057 16%, var(--surface)); }
+.note-blue { --note: color-mix(in srgb, #339af0 16%, var(--surface)); }
+.note-pink { --note: color-mix(in srgb, #f06595 16%, var(--surface)); }
+.note-violet { --note: color-mix(in srgb, #9775fa 16%, var(--surface)); }
+.note-plain { --note: var(--surface); }
+
+.swatches {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 38px;
+}
+
+.swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  background: var(--note);
+  padding: 0;
+}
+
+.swatch.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.item-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 10px;
+}
+
+.item-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--note, var(--surface-2));
+  color: var(--text);
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.item-note .icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--faint);
+}
+
+.note-mark {
+  display: inline-flex;
+  color: var(--faint);
+}
+
+.note-mark .icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* ---------------------------------------------------------------- Google-Plattformen */
+
+.cal-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cal-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.cal-list li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.cal-list small {
+  display: block;
+  color: var(--faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+
+.check-list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  /* sechs Bereiche in der unteren Leiste */
+  .nav-item > span:nth-child(2) {
+    font-size: 9.5px;
+    letter-spacing: -0.03em;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .nav-item.is-active .icon {
+    width: 46px;
+    padding: 1px 11px;
+  }
+}

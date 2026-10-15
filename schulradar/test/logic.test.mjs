@@ -101,3 +101,17 @@ test('Stundenplan: Doppelstunden werden zusammengefasst, Gruppen nebeneinander g
   assert.equal(L.lessonColor({ subject: 'AM' }), L.lessonColor({ subject: 'AM' }));
   assert.equal(L.lessonColor({ subject: 'AM', color: '#94d82d' }), '#94d82d');
 });
+
+test('Notizen: Suche, Fach, angeheftete zuerst, Titel aus erster Zeile', () => {
+  const notes = [
+    { id: '1', title: '', text: 'Formeln Kapitel 3\nmehr', subject: 'AM', updated: 3 },
+    { id: '2', title: 'Vokabeln', text: 'Unit 4', subject: 'E', updated: 5 },
+    { id: '3', title: 'Referat', text: 'Gliederung', subject: 'AM', pinned: true, updated: 1, itemId: 'teams:x' }
+  ];
+  assert.deepEqual(L.filterNotes(notes).map((n) => n.id), ['3', '2', '1']);
+  assert.deepEqual(L.filterNotes(notes, { subject: 'AM' }).map((n) => n.id), ['3', '1']);
+  assert.deepEqual(L.filterNotes(notes, { query: 'kapitel formeln' }).map((n) => n.id), ['1']);
+  assert.deepEqual(L.noteSubjects(notes), ['AM', 'E']);
+  assert.equal(L.noteTitle(notes[0]), 'Formeln Kapitel 3');
+  assert.equal(L.notesForItem(notes, 'teams:x').length, 1);
+});

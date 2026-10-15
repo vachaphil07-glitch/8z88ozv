@@ -6,7 +6,7 @@ const { isActive, isExamLike, isAppointment } = require('./status');
 const HOUR = 3600 * 1000;
 const GRACE = 6 * HOUR; // war der PC aus, wird eine verpasste Erinnerung bis zu 6 h später nachgeholt
 
-const SOURCE_NAMES = { webuntis: 'WebUntis', teams: 'Teams', letto: 'Letto', eduvidual: 'Eduvidual', lms: 'LMS.at', own: 'Eigene' };
+const SOURCE_NAMES = { webuntis: 'WebUntis', teams: 'Teams', letto: 'Letto', eduvidual: 'Eduvidual', lms: 'LMS.at', gcal: 'Google Kalender', gtasks: 'Google Tasks', own: 'Eigene' };
 
 function parseTime(hhmm, fallback) {
   const m = String(hhmm || fallback).match(/^(\d{1,2}):(\d{2})$/);
@@ -37,6 +37,8 @@ function reminderTriggers({ items, local, settings, now = Date.now() }) {
   const out = [];
   for (const it of items) {
     if (!it.due || it.due <= now || !isActive(it, local, now)) continue;
+    // Termine aus dem privaten Kalender nur, wenn das so eingestellt ist
+    if (it.source === 'gcal' && !(settings.platforms && settings.platforms.gcal && settings.platforms.gcal.remind)) continue;
     const triggers = [];
     if ((it.allDay || isAppointment(it)) && r.eveningBefore) {
       const [hh, mm] = parseTime(r.eveningTime, '18:00');

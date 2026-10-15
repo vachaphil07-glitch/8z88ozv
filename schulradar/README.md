@@ -1,6 +1,6 @@
 # Schulradar
 
-**Alle Aufgaben, Abgaben und Tests aus WebUntis, MS Teams, Letto, Eduvidual und LMS.at in einer Übersicht.**
+**Alle Aufgaben, Abgaben und Tests aus WebUntis, MS Teams, Letto, Eduvidual und LMS.at in einer Übersicht – dazu Google Kalender, Google Tasks und Notizen.**
 
 Bei uns in der Schule kommen Aufgaben, Aufträge und Testtermine über mehrere verschiedene Plattformen.
 Um sicher zu sein, dass wirklich alles erledigt ist, musste man bisher alle einzeln durchsehen.
@@ -27,7 +27,12 @@ Voreingestellt für die **HTL Hollabrunn**; für andere Schulen lassen sich alle
 - **Tests & Schularbeiten** aus WebUntis werden hervorgehoben (auch „Tests in 7 Tagen“ oben).
 - **Wochen- und Monatsansicht**, in der Woche auf Wunsch mit dem Stundenplan aus WebUntis
   als Zeitraster wie in WebUntis (Doppelstunden, Gruppen, Entfall, Änderung, Prüfung).
-- **Eigene Aufgaben** für Dinge, die nur mündlich angesagt wurden.
+- **Eigene Aufgaben** für Dinge, die nur mündlich angesagt wurden, auf Wunsch direkt in Google Tasks.
+- **Google Kalender**: private Termine (Training, Arzt, Ferien …) erscheinen neben den Schulterminen in
+  Übersicht, Woche und Monat. Funktioniert auch mit Outlook, iCloud und jedem Kalender mit iCal-Adresse.
+- **Google Tasks**: Aufgaben aus allen Listen, Abhaken wirkt in beide Richtungen (derzeit PC-Version).
+- **Notizen**: Stoff für Tests, Mitschriften, Ideen, mit Fach, Farbe und Anheften. Notizen lassen sich
+  auch an eine Aufgabe oder einen Test hängen („Notiz“ im Eintrag).
 - **In den Kalender übernehmen**: Bei jedem Eintrag unter **Kalender** → Google Kalender, Outlook
   (Schulkonto), Yahoo, Kalenderdatei (.ics) oder am Handy direkt die Kalender-App. Unter
   *Einstellungen → Kalender* lassen sich alle kommenden Tests und Schularbeiten auf einmal exportieren.
@@ -140,6 +145,29 @@ Wie bei Letto kann man Benutzername und Passwort speichern, damit der Abruf nach
 weiterläuft. LMS.at hat keine offizielle Schnittstelle für Schüler. Klappt die Erkennung bei euch nicht,
 bitte unter *Plattformen → LMS.at* die **Diagnose** speichern und schicken.
 
+### Google Kalender: eigene Termine anzeigen
+1. Google Kalender am PC im Browser öffnen (calendar.google.com).
+2. Links bei *Meine Kalender* beim gewünschten Kalender auf **⋮ → Einstellungen und Freigabe**.
+3. Ganz unten bei *Kalender integrieren* die **Geheime Adresse im iCal-Format** kopieren.
+4. In Schulradar unter *Plattformen → Google Kalender* einfügen und **Kalender hinzufügen**.
+
+Man kann mehrere Kalender eintragen. Die Adresse wirkt wie ein Passwort und wird verschlüsselt gespeichert.
+Termine werden nur gelesen. Wiederholungen, Zeitzonen und ganztägige Termine werden richtig erkannt.
+Google aktualisiert diese Adresse mit etwas Verzögerung (meist unter einer Stunde).
+
+### Google Tasks: Aufgaben in beide Richtungen
+Google lässt Apps nur mit einer eigenen **OAuth-Client-ID** auf Google Tasks zugreifen (einmalig, kostenlos):
+1. [console.cloud.google.com](https://console.cloud.google.com) öffnen und ein Projekt anlegen.
+2. *APIs & Dienste → Bibliothek* → **Google Tasks API** aktivieren.
+3. *OAuth-Zustimmungsbildschirm*: Typ „Extern“, App-Name eingeben, sich selbst als **Testnutzer** eintragen.
+4. *Anmeldedaten → Anmeldedaten erstellen → OAuth-Client-ID* → Typ **Desktop-App**.
+5. Client-ID und Clientschlüssel in Schulradar unter *Plattformen → Google Tasks* eintragen und
+   **Mit Google verbinden**. Die Anmeldung öffnet sich im normalen Browser.
+
+Danach erscheinen alle Aufgaben (wählbar pro Liste). Abhaken in Schulradar hakt auch in Google Tasks ab und
+umgekehrt. Bei *Eigene Aufgabe* kann man „Speichern in: Google Tasks“ wählen. Google Tasks kennt nur ein
+Datum, keine Uhrzeit. Die Verbindung klappt derzeit nur in der PC-Version.
+
 ## Kalender: Tests & Schularbeiten übernehmen
 
 - **Einzelner Termin:** Eintrag antippen → **Kalender** → **Google Kalender**, **Outlook (Schulkonto)**,
@@ -155,8 +183,8 @@ bitte unter *Plattformen → LMS.at* die **Diagnose** speichern und schicken.
 
 ## Datenschutz & Sicherheit
 
-- Schulradar hat **keinen eigenen Server**. Die App spricht nur direkt mit WebUntis, Microsoft/Teams, Letto
-  und Eduvidual.
+- Schulradar hat **keinen eigenen Server**. Die App spricht nur direkt mit WebUntis, Microsoft/Teams, Letto,
+  Eduvidual, LMS.at und (falls verbunden) Google.
 - Alle Daten bleiben auf dem eigenen PC: `%APPDATA%\Schulradar\schulradar-daten.json`.
 - Passwörter, Schlüssel und Tokens werden mit der **Windows-Verschlüsselung (DPAPI)** gespeichert
   (`zugangsdaten.bin`). Nur der eigene Windows-Benutzer kann sie entschlüsseln.
@@ -182,7 +210,7 @@ Schnittstellen, die auch die offiziellen Handy-Apps verwenden.
 | Strg+N | eigene Aufgabe anlegen |
 | Strg+F | suchen |
 | Strg+R / F5 | alle Plattformen jetzt abrufen |
-| Strg+1 … 5 | Übersicht, Woche, Monat, Plattformen, Einstellungen |
+| Strg+1 … 6 | Übersicht, Woche, Monat, Notizen, Plattformen, Einstellungen |
 | Esc | Dialog schließen |
 
 Ein Klick auf einen Eintrag zeigt Details (Beschreibung, Lehrkraft, Raum …) und öffnet ihn auf der

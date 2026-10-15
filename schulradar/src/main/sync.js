@@ -131,7 +131,13 @@ class SyncManager {
       if (enabled('letto')) await this.syncOne('letto');
       if (enabled('lms')) await this.syncOne('lms');
     })();
-    await Promise.all([enabled('webuntis') && this.syncOne('webuntis'), enabled('eduvidual') && this.syncOne('eduvidual'), browserBased]);
+    await Promise.all([
+      enabled('webuntis') && this.syncOne('webuntis'),
+      enabled('eduvidual') && this.syncOne('eduvidual'),
+      enabled('gcal') && this.syncOne('gcal'),
+      enabled('gtasks') && this.syncOne('gtasks'),
+      browserBased
+    ]);
     this.store.prune();
   }
 

@@ -8,10 +8,12 @@ export const SOURCE_META = {
   letto: { name: 'Letto', short: 'L', color: '#0E9F6E' },
   eduvidual: { name: 'Eduvidual', short: 'E', color: '#1E7FD8' },
   lms: { name: 'LMS.at', short: 'LMS', color: '#0B7285' },
+  gcal: { name: 'Google Kalender', short: 'GK', color: '#1A73E8' },
+  gtasks: { name: 'Google Tasks', short: 'GT', color: '#2684FC' },
   own: { name: 'Eigene', short: '★', color: '#D6336C' }
 };
 
-export const SOURCE_ORDER = ['webuntis', 'teams', 'letto', 'eduvidual', 'lms', 'own'];
+export const SOURCE_ORDER = ['webuntis', 'teams', 'letto', 'eduvidual', 'lms', 'gcal', 'gtasks', 'own'];
 
 const TYPE_LABELS = {
   homework: 'Hausübung',
@@ -364,4 +366,35 @@ export function lessonColor(lesson) {
   let hash = 0;
   for (const ch of String(lesson.subject || '')) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
   return LESSON_COLORS[hash % LESSON_COLORS.length];
+}
+
+// ---------------------------------------------------------------- Notizen
+
+/** Notizen filtern (Suche, Fach) und sortieren: angeheftete zuerst, dann zuletzt bearbeitete */
+export function filterNotes(notes, { query = '', subject = '' } = {}) {
+  const words = String(query || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return (notes || [])
+    .filter((n) => !subject || (n.subject || '') === subject)
+    .filter((n) => {
+      if (!words.length) return true;
+      const hay = [n.title, n.text, n.subject].filter(Boolean).join(' ').toLowerCase();
+      return words.every((w) => hay.includes(w));
+    })
+    .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || (b.updated || 0) - (a.updated || 0));
+}
+
+export function noteSubjects(notes) {
+  return [...new Set((notes || []).map((n) => n.subject).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'de'));
+}
+
+export function notesForItem(notes, itemId) {
+  return (notes || []).filter((n) => n.itemId === itemId);
+}
+
+/** Erste Zeile als Titel, wenn kein Titel vergeben wurde */
+export function noteTitle(note) {
+  const t = String(note.title || '').trim();
+  if (t) return t;
+  const first = String(note.text || '').trim().split('\n')[0] || '';
+  return first.length > 60 ? `${first.slice(0, 59)}…` : first || '(leere Notiz)';
 }

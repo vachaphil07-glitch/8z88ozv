@@ -2,7 +2,8 @@
 // Gemeinsame Browser-Sitzung für alle Plattformen.
 // Alle Plattformen teilen sich EINE Sitzung: Wer sich einmal mit dem Microsoft-Schulkonto anmeldet,
 // ist dadurch meist auch bei den anderen Plattformen mit "Mit Microsoft anmelden" sofort drin.
-const { session, net, BrowserWindow } = require('electron');
+const http = require('http');
+const { session, net, BrowserWindow, shell } = require('electron');
 const { HttpError, evalIn, waitFor, sleep } = require('./platform');
 
 const PARTITION = 'persist:schulradar-web';
@@ -232,7 +233,47 @@ async function clearOrigins(origins) {
   }
 }
 
+/**
+ * Anmeldung im normalen Browser mit Rückleitung auf diesen PC (OAuth „Loopback“, z. B. Google).
+ * buildUrl(redirectUri) liefert die Anmeldeadresse; zurück kommt {code, redirectUri}.
+ */
+function oauthLoopback({ buildUrl, timeout = 5 * 60 * 1000, doneText = 'Fertig! Du kannst dieses Fenster schließen und zu Schulradar zurückkehren.' }) {
+  return new Promise((resolve, reject) => {
+    let redirectUri = '';
+    const page = (text) =>
+      `<!doctype html><meta charset="utf-8"><title>Schulradar</title><body style="font:16px system-ui;padding:48px;text-align:center"><h2>Schulradar</h2><p>${text}</p></body>`;
+    const server = http.createServer((req, res) => {
+      const url = new URL(req.url, redirectUri);
+      if (url.pathname !== '/') {
+        res.writeHead(404).end();
+        return;
+      }
+      const code = url.searchParams.get('code');
+      const error = url.searchParams.get('error');
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(page(code ? doneText : 'Anmeldung abgebrochen.'));
+      finish(code ? null : new Error(error === 'access_denied' ? 'Anmeldung abgebrochen.' : `Anmeldung fehlgeschlagen (${error || 'kein Code'}).`), code);
+    });
+    const timer = setTimeout(() => finish(new Error('Zeitüberschreitung bei der Anmeldung.')), timeout);
+    let finished = false;
+    function finish(err, code) {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      server.close();
+      if (err) reject(err);
+      else resolve({ code, redirectUri });
+    }
+    server.on('error', (err) => finish(err));
+    server.listen(0, '127.0.0.1', () => {
+      redirectUri = `http://127.0.0.1:${server.address().port}`;
+      shell.openExternal(buildUrl(redirectUri));
+    });
+  });
+}
+
 module.exports = {
+  oauthLoopback,
   PARTITION,
   webSession,
   chromeUserAgent,

@@ -72,5 +72,10 @@ module.exports = {
   loadUrl: (...a) => need().loadUrl(...a),
   captureJson: (...a) => need().captureJson(...a),
   clearOrigins: (...a) => need().clearOrigins(...a),
-  setCookie: (...a) => need().setCookie(...a)
+  setCookie: (...a) => need().setCookie(...a),
+  oauthLoopback: (...a) => {
+    const i = need();
+    if (!i.oauthLoopback) throw new Error('Diese Anmeldung ist derzeit nur in der PC-Version möglich.');
+    return i.oauthLoopback(...a);
+  }
 };

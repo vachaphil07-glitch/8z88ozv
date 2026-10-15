@@ -32,7 +32,9 @@ function createController({ store, secrets, sync, host, isDemo }) {
       hasKey: sec.has('key'),
       hasPassword: sec.has('password'),
       hasToken: sec.has('token'),
-      hasGraph: sec.has('graph')
+      hasGraph: sec.has('graph'),
+      hasOauth: sec.has('oauth'),
+      hasClientSecret: sec.has('clientSecret')
     };
   }
 
@@ -52,6 +54,7 @@ function createController({ store, secrets, sync, host, isDemo }) {
       forcedDemo: Boolean(host.forcedDemo),
       items,
       local: snap.local,
+      notes: snap.notes,
       sourceState,
       settings: snap.settings,
       syncing: demo ? [] : [...sync.running.keys()],
@@ -79,8 +82,25 @@ function createController({ store, secrets, sync, host, isDemo }) {
     },
 
     setDone(id, done) {
+      if (String(id).startsWith('gtasks:') && !isDemo()) return this.setGoogleTaskDone(id, done);
       store.setDone(id, done);
       push();
+    },
+
+    /** Google-Tasks-Aufgabe sofort umschalten und an Google senden; bei Fehler zurücknehmen */
+    async setGoogleTaskDone(id, done) {
+      const item = (store.data.items.gtasks || []).find((i) => i.id === id);
+      const before = item ? item.status : null;
+      store.setDone(id, false);
+      store.patchItem('gtasks', id, { status: done ? 'done' : 'open' });
+      push();
+      try {
+        await connectors.gtasks.setCompleted(sync.context('gtasks'), id, done);
+      } catch (err) {
+        if (before) store.patchItem('gtasks', id, { status: before });
+        push();
+        host.toast(`Google Tasks: ${err.message}`, 'error');
+      }
     },
 
     setDismissed(id, dismissed) {
@@ -94,7 +114,20 @@ function createController({ store, secrets, sync, host, isDemo }) {
       push();
     },
 
-    saveOwnTask(task = {}) {
+    async saveOwnTask(task = {}) {
+      if (task.target === 'gtasks' && !task.id) {
+        try {
+          await connectors.gtasks.createTask(sync.context('gtasks'), {
+            title: String(task.title || '').slice(0, 300),
+            notes: [task.subject, task.description].filter(Boolean).join('\n').slice(0, 5000),
+            due: Number.isFinite(task.due) ? task.due : null
+          });
+          await sync.syncOne('gtasks');
+          return { ok: true };
+        } catch (err) {
+          return { ok: false, error: err.message };
+        }
+      }
       const clean = {
         id: task.id || undefined,
         title: String(task.title || '').slice(0, 300),
@@ -107,6 +140,66 @@ function createController({ store, secrets, sync, host, isDemo }) {
       if (!clean.id) delete clean.id;
       store.saveOwnTask(clean);
       push();
+      return { ok: true };
+    },
+
+    saveNote(note = {}) {
+      const clean = {
+        title: String(note.title || '').slice(0, 200),
+        text: String(note.text || '').slice(0, 50000),
+        subject: String(note.subject || '').slice(0, 60),
+        itemId: note.itemId ? String(note.itemId).slice(0, 300) : '',
+        pinned: Boolean(note.pinned),
+        color: /^[a-z]{0,12}$/.test(note.color || '') ? note.color || '' : ''
+      };
+      if (note.id) clean.id = String(note.id);
+      if (!clean.title.trim() && !clean.text.trim()) return { ok: false, error: 'Leere Notiz' };
+      store.saveNote(clean);
+      push();
+      return { ok: true };
+    },
+
+    deleteNote(id) {
+      store.deleteNote(id);
+      push();
+    },
+
+    // ---------------------------------------------------------------- Google
+
+    gcalAdd(url, name) {
+      try {
+        connectors.gcal.addCalendar(sync.context('gcal'), { url, name });
+        if (!store.settings.platforms.gcal.enabled) store.updateSettings({ platforms: { gcal: { enabled: true } } });
+        push();
+        if (!isDemo()) sync.syncOne('gcal');
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
+    },
+
+    gcalRemove(id) {
+      connectors.gcal.removeCalendar(sync.context('gcal'), id);
+      push();
+      if (!isDemo() && store.settings.platforms.gcal.calendars.length) sync.syncOne('gcal');
+      else store.setItems('gcal', []);
+      return buildState();
+    },
+
+    async gtasksConnect({ clientId, clientSecret } = {}) {
+      const patch = { enabled: true };
+      if (clientId !== undefined) patch.clientId = String(clientId).trim();
+      store.updateSettings({ platforms: { gtasks: patch } });
+      if (clientSecret !== undefined && clientSecret !== '') sync.scopedSecrets('gtasks').set('clientSecret', String(clientSecret).trim());
+      try {
+        await connectors.gtasks.connect(sync.context('gtasks'));
+        push();
+        sync.syncOne('gtasks');
+        return { ok: true };
+      } catch (err) {
+        push();
+        return { ok: false, error: err.message };
+      }
     },
 
     deleteOwnTask(id) {
@@ -123,6 +216,7 @@ function createController({ store, secrets, sync, host, isDemo }) {
       if (patch.platforms) {
         for (const [id, p] of Object.entries(patch.platforms)) {
           if (p && p.enabled === true && !before.platforms[id].enabled) sync.syncOne(id);
+          else if (id === 'gtasks' && p && p.hiddenLists) sync.syncOne(id);
         }
       }
       host.onSettingsChanged(patch, before, after);

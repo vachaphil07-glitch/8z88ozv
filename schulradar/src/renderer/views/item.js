@@ -45,7 +45,10 @@ function leading(item, status, ctx) {
   const platformDone = item.status === 'submitted' || item.status === 'graded' || item.status === 'done';
   const locallyDone = Boolean(ctx.state.local.done[item.id]);
   const checked = platformDone || locallyDone;
-  const title = platformDone && !locallyDone ? 'Auf der Plattform bereits abgegeben' : checked ? 'Wieder als offen markieren' : 'Als erledigt abhaken';
+  // Google Tasks: Abhaken wirkt in beide Richtungen, also immer umschaltbar
+  const twoWay = item.source === 'gtasks';
+  const locked = platformDone && !locallyDone && !twoWay;
+  const title = locked ? 'Auf der Plattform bereits abgegeben' : checked ? 'Wieder als offen markieren' : 'Als erledigt abhaken';
   return h(
     'button',
     {
@@ -53,10 +56,10 @@ function leading(item, status, ctx) {
       title,
       'aria-label': title,
       'aria-pressed': checked ? 'true' : 'false',
-      disabled: platformDone && !locallyDone,
+      disabled: locked,
       onclick: (e) => {
         e.stopPropagation();
-        ctx.actions.toggleDone(item, !locallyDone);
+        ctx.actions.toggleDone(item, twoWay ? !checked : !locallyDone);
       }
     },
     icon('check')
@@ -85,6 +88,10 @@ export function details(item, ctx) {
   const actions = [];
   const cal = calendarButton(item, ctx);
   if (cal) actions.push(cal);
+  const notes = L.notesForItem(ctx.state.notes, item.id);
+  if (!item.demo || item.source === 'own') {
+    actions.push(h('button', { class: 'btn btn-ghost', title: 'Notiz zu diesem Eintrag', onclick: () => ctx.actions.newNote({ itemId: item.id }) }, icon('note'), 'Notiz'));
+  }
   if (item.url) {
     actions.push(
       h('button', { class: 'btn', onclick: () => ctx.api.openUrl(item.url, false) }, icon('open'), 'Öffnen'),
@@ -113,6 +120,20 @@ export function details(item, ctx) {
     { class: 'details' },
     item.description ? h('p', { class: 'desc' }, item.description) : null,
     item.note ? h('p', { class: 'note' }, icon('info'), item.note) : null,
+    notes.length
+      ? h(
+          'div',
+          { class: 'item-notes' },
+          notes.map((n) =>
+            h(
+              'button',
+              { class: `item-note ${n.color ? `note-${n.color}` : ''}`, title: 'Notiz bearbeiten', onclick: () => ctx.actions.editNote(n) },
+              icon('note'),
+              h('span', {}, [n.title, n.text].filter((x) => String(x || '').trim()).join(' – ').slice(0, 400))
+            )
+          )
+        )
+      : null,
     h('div', { class: 'facts' }, facts),
     actions.length ? h('div', { class: 'detail-actions' }, actions) : null,
     item.fetched ? h('div', { class: 'fetched' }, `Stand: ${L.timeAgo(item.fetched, now)}`) : null
@@ -159,6 +180,7 @@ export function renderItem(item, ctx, { expandable = true, showDate = true } = {
           { class: 'item-meta' },
           sourceBadge(item.source),
           metaLine(item).map((b) => h('span', { class: 'meta-bit' }, b)),
+          L.notesForItem(ctx.state.notes, item.id).length ? h('span', { class: 'note-mark', title: 'Hat eine Notiz' }, icon('note')) : null,
           progressBar(item.progress)
         )
       ),

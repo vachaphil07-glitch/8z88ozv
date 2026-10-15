@@ -370,7 +370,164 @@ function lmsBody(ctx, p) {
   ];
 }
 
-const BODIES = { webuntis: webuntisBody, eduvidual: eduvidualBody, teams: teamsBody, letto: lettoBody, lms: lmsBody };
+function gcalBody(ctx) {
+  const s = ctx.state.settings.platforms.gcal;
+  const d = draft(ctx, 'gcal');
+  const cals = s.calendars || [];
+  const add = async () => {
+    const res = await ctx.api.gcalAdd(d.url || '', d.name || '');
+    if (res && res.ok) {
+      ctx.ui.drafts.gcal = {};
+      ctx.toast('Kalender hinzugefügt – wird abgerufen …', 'ok');
+      ctx.rerender();
+    } else ctx.toast((res && res.error) || 'Konnte den Kalender nicht hinzufügen.', 'error');
+  };
+  return [
+    h(
+      'div',
+      { class: 'help' },
+      h('strong', {}, 'So findest du die Adresse:'),
+      steps(
+        'Google Kalender am PC im Browser öffnen (calendar.google.com).',
+        'Links bei „Meine Kalender“ beim gewünschten Kalender auf ⋮ → „Einstellungen und Freigabe“.',
+        'Ganz unten bei „Kalender integrieren“ die „Geheime Adresse im iCal-Format“ kopieren und hier einfügen.'
+      ),
+      h('p', { class: 'muted' }, 'Funktioniert auch mit Outlook, iCloud oder jedem anderen Kalender mit iCal-Adresse. Die Adresse wirkt wie ein Passwort und wird verschlüsselt gespeichert. Termine werden nur gelesen.')
+    ),
+    cals.length
+      ? h(
+          'ul',
+          { class: 'cal-list' },
+          cals.map((c) =>
+            h(
+              'li',
+              {},
+              icon('calendar'),
+              h('div', {}, h('strong', {}, c.name || 'Kalender'), h('small', {}, c.host || '')),
+              h(
+                'button',
+                {
+                  class: 'btn btn-small btn-ghost',
+                  onclick: () => ctx.api.gcalRemove(c.id).then(() => ctx.toast('Kalender entfernt.'))
+                },
+                'Entfernen'
+              )
+            )
+          )
+        )
+      : null,
+    h(
+      'div',
+      { class: 'form-row' },
+      field(ctx, 'gcal', 'url', { label: 'Geheime iCal-Adresse', placeholder: 'https://calendar.google.com/calendar/ical/…/basic.ics' }),
+      field(ctx, 'gcal', 'name', { label: 'Name (optional)', placeholder: 'z. B. Privat, Training' })
+    ),
+    h('div', { class: 'form-actions' }, saveButton('Kalender hinzufügen', add)),
+    h(
+      'div',
+      { class: 'check-list' },
+      h(
+        'label',
+        {},
+        h('input', { type: 'checkbox', checked: Boolean(s.remind), onchange: (e) => ctx.actions.updatePlatform('gcal', { remind: e.target.checked }) }),
+        'Auch an diese Termine erinnern (am Vorabend)'
+      )
+    )
+  ];
+}
+
+function gtasksBody(ctx, p) {
+  const s = ctx.state.settings.platforms.gtasks;
+  const d = draft(ctx, 'gtasks');
+  if (ctx.state.platform === 'android') {
+    return [
+      h(
+        'div',
+        { class: 'help' },
+        'Google Tasks lässt sich derzeit nur in der PC-Version verbinden. Tipp: Aufgaben mit Datum aus Google Tasks erscheinen auch im Google Kalender – über „Google Kalender“ kommen Termine schon jetzt aufs Handy.'
+      )
+    ];
+  }
+  const connect = async () => {
+    ctx.ui.gtasksBusy = true;
+    ctx.rerender();
+    ctx.toast('Im Browser bei Google anmelden und Zugriff erlauben …');
+    const res = await ctx.api.gtasksConnect({ clientId: d.clientId ?? s.clientId, clientSecret: d.clientSecret || undefined });
+    ctx.ui.gtasksBusy = false;
+    delete d.clientSecret;
+    if (res && res.ok) ctx.toast('Google Tasks verbunden.', 'ok');
+    else ctx.toast((res && res.error) || 'Verbinden fehlgeschlagen.', 'error');
+    ctx.rerender();
+  };
+  const lists = s.knownLists || [];
+  const hidden = new Set(s.hiddenLists || []);
+  return [
+    p.hasOauth
+      ? h('div', { class: 'help' }, h('strong', {}, 'Verbunden. '), 'Abhaken in Schulradar hakt die Aufgabe auch in Google Tasks ab. Neue Aufgaben kannst du über „Eigene Aufgabe“ → „Speichern in: Google Tasks“ direkt dort anlegen.')
+      : h(
+          'div',
+          { class: 'help' },
+          h('strong', {}, 'Einmalige Einrichtung (ca. 5 Minuten):'),
+          steps(
+            'console.cloud.google.com öffnen, mit deinem Google-Konto anmelden und ein Projekt anlegen (z. B. „Schulradar“).',
+            '„APIs & Dienste“ → „Bibliothek“ → „Google Tasks API“ suchen und aktivieren.',
+            '„OAuth-Zustimmungsbildschirm“ einrichten: Typ „Extern“, App-Name eingeben, dich selbst unter „Testnutzer“ hinzufügen.',
+            '„Anmeldedaten“ → „Anmeldedaten erstellen“ → „OAuth-Client-ID“ → Typ „Desktop-App“.',
+            'Client-ID und Clientschlüssel hier einfügen und auf „Mit Google verbinden“ klicken.'
+          )
+        ),
+    h(
+      'div',
+      { class: 'form-row' },
+      field(ctx, 'gtasks', 'clientId', { label: 'Client-ID', value: s.clientId, placeholder: '…apps.googleusercontent.com' }),
+      field(ctx, 'gtasks', 'clientSecret', { label: 'Clientschlüssel', type: 'password', placeholder: p.hasClientSecret ? '•••••••• (gespeichert)' : 'GOCSPX-…' })
+    ),
+    h(
+      'div',
+      { class: 'form-actions' },
+      h('button', { class: 'btn btn-primary', disabled: Boolean(ctx.ui.gtasksBusy), onclick: connect }, icon('login'), ctx.ui.gtasksBusy ? 'Warte auf Google …' : p.hasOauth ? 'Neu verbinden' : 'Mit Google verbinden')
+    ),
+    lists.length
+      ? advanced(
+          'Listen auswählen',
+          h(
+            'div',
+            { class: 'check-list' },
+            lists.map((l) =>
+              h(
+                'label',
+                {},
+                h('input', {
+                  type: 'checkbox',
+                  checked: !hidden.has(l.id),
+                  onchange: (e) => {
+                    const next = new Set(hidden);
+                    if (e.target.checked) next.delete(l.id);
+                    else next.add(l.id);
+                    ctx.actions.updatePlatform('gtasks', { hiddenLists: [...next] });
+                  }
+                }),
+                l.title
+              )
+            )
+          ),
+          h(
+            'label',
+            { class: 'field' },
+            h('span', { class: 'field-label' }, 'Neue Aufgaben speichern in'),
+            h(
+              'select',
+              { class: 'select', onchange: (e) => ctx.actions.updatePlatform('gtasks', { defaultList: e.target.value }) },
+              h('option', { value: '', selected: !s.defaultList }, 'Standardliste'),
+              lists.map((l) => h('option', { value: l.id, selected: s.defaultList === l.id }, l.title))
+            )
+          )
+        )
+      : null
+  ];
+}
+
+const BODIES = { webuntis: webuntisBody, eduvidual: eduvidualBody, teams: teamsBody, letto: lettoBody, lms: lmsBody, gcal: gcalBody, gtasks: gtasksBody };
 
 export function renderPlatforms(root, ctx) {
   const { state } = ctx;
