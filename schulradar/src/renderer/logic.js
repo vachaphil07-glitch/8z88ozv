@@ -398,3 +398,75 @@ export function noteTitle(note) {
   const first = String(note.text || '').trim().split('\n')[0] || '';
   return first.length > 60 ? `${first.slice(0, 59)}…` : first || '(leere Notiz)';
 }
+
+// ---------------------------------------------------------------- Noten (österreichisches System 1–5)
+
+export const GRADE_KINDS = {
+  sa: 'Schularbeit',
+  test: 'Test',
+  muendlich: 'Mündlich',
+  mitarbeit: 'Mitarbeit',
+  hue: 'Hausübung',
+  sonst: 'Sonstiges'
+};
+
+export const GRADE_NAMES = { 1: 'Sehr gut', 2: 'Gut', 3: 'Befriedigend', 4: 'Genügend', 5: 'Nicht genügend' };
+
+/** Gewichteter Schnitt; null ohne Noten */
+export function weightedAverage(entries) {
+  let sum = 0;
+  let w = 0;
+  for (const e of entries || []) {
+    const weight = Number(e.weight) > 0 ? Number(e.weight) : 1;
+    sum += Number(e.grade) * weight;
+    w += weight;
+  }
+  return w ? sum / w : null;
+}
+
+/** Schnitt -> Note (bis x,5 zählt die bessere Note) */
+export function gradeFromAverage(avg) {
+  if (avg === null || avg === undefined || !Number.isFinite(avg)) return null;
+  return Math.min(5, Math.max(1, Math.ceil(avg - 0.5 - 1e-9)));
+}
+
+/** Eigene Noten nach Fach: [{subject, entries, average, grade, weight}] */
+export function gradeSummary(grades) {
+  const bySubject = new Map();
+  for (const g of grades || []) {
+    const key = String(g.subject || '').trim() || 'Ohne Fach';
+    if (!bySubject.has(key)) bySubject.set(key, []);
+    bySubject.get(key).push(g);
+  }
+  return [...bySubject.entries()]
+    .map(([subject, entries]) => {
+      entries.sort((a, b) => (b.date || 0) - (a.date || 0));
+      const average = weightedAverage(entries);
+      return { subject, entries, average, grade: gradeFromAverage(average), weight: entries.reduce((s, e) => s + (Number(e.weight) > 0 ? Number(e.weight) : 1), 0) };
+    })
+    .sort((a, b) => a.subject.localeCompare(b.subject, 'de'));
+}
+
+/**
+ * Welche Note braucht man bei der nächsten Leistung (Gewicht weight), um mindestens die Note target
+ * zu bekommen? {needed, status: 'safe' | 'possible' | 'impossible'}
+ */
+export function neededGrade(entries, target, weight = 1) {
+  const limit = Number(target) + 0.5; // Schnitt bis x,5 ergibt noch Note x
+  let sum = 0;
+  let w = 0;
+  for (const e of entries || []) {
+    const ew = Number(e.weight) > 0 ? Number(e.weight) : 1;
+    sum += Number(e.grade) * ew;
+    w += ew;
+  }
+  const needed = (limit * (w + weight) - sum) / weight;
+  if (needed >= 5) return { needed: 5, status: 'safe' };
+  if (needed < 1) return { needed, status: 'impossible' };
+  return { needed, status: 'possible' };
+}
+
+export function fmtGrade(n, digits = 2) {
+  if (n === null || n === undefined || !Number.isFinite(n)) return '–';
+  return n.toFixed(digits).replace('.', ',');
+}

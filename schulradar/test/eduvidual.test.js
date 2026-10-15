@@ -50,3 +50,26 @@ test('Token aus moodlemobile://-Link', () => {
   assert.equal(decodeLaunchToken(url), token);
   assert.equal(decodeLaunchToken('moodlemobile://token=' + Buffer.from('kaputt').toString('base64')), null);
 });
+
+test('Eduvidual: Noten aus Moodle', () => {
+  const { parseMoodleGrades } = require('../src/main/connectors/eduvidual');
+  const grades = parseMoodleGrades({
+    overview: [{ courseid: 7, grade: '85,00 %' }, { courseid: 8, grade: '-' }],
+    courses: [{ id: 7, fullname: 'Softwareentwicklung 4AHIT' }],
+    itemsByCourse: {
+      7: [
+        { itemname: 'Projekt', itemtype: 'mod', itemmodule: 'assign', gradeformatted: '17,00', percentageformatted: '85,00 %', grademin: 0, grademax: 20, gradedategraded: 1760000000, feedback: '<p>Gut&nbsp;gemacht</p>' },
+        { itemname: 'Noch nicht bewertet', itemtype: 'mod', gradeformatted: '-' },
+        { itemname: 'Kategorie', itemtype: 'category', gradeformatted: '17,00' },
+        { itemname: null, itemtype: 'course', gradeformatted: '85,00 %', percentageformatted: '85,00 %' }
+      ]
+    }
+  });
+  assert.equal(grades.length, 1, 'Kurs ohne Note wird weggelassen');
+  const [c] = grades;
+  assert.equal(c.course, 'Softwareentwicklung 4AHIT');
+  assert.equal(c.percent, 85);
+  assert.equal(c.items.length, 1);
+  assert.deepEqual([c.items[0].grade, c.items[0].percent, c.items[0].range, c.items[0].feedback], ['17,00', 85, '0–20', 'Gut gemacht']);
+  assert.equal(c.items[0].graded, 1760000000 * 1000);
+});

@@ -3312,3 +3312,185 @@ p {
     padding: 1px 11px;
   }
 }
+
+/* ---------------------------------------------------------------- Noten */
+
+.section-title {
+  font-size: 15px;
+  margin: 22px 0 10px;
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.grade-overall {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  flex-wrap: wrap;
+}
+
+.grade-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.grade-card {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.grade-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.grade-card.moodle .grade-head {
+  cursor: pointer;
+}
+
+.grade-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.grade-title h3 {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.grade-title .muted {
+  font-size: 12.5px;
+}
+
+.grade-badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  height: 42px;
+  padding: 0 6px;
+  border-radius: 12px;
+  font-weight: 750;
+  font-size: 19px;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.grade-badge.grade-1,
+.grade-badge.grade-2 {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.grade-badge.grade-3 {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.grade-badge.grade-4 {
+  background: color-mix(in srgb, var(--warn) 15%, transparent);
+  color: var(--warn);
+}
+
+.grade-badge.grade-5 {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+
+.grade-badge.grade-moodle {
+  font-size: 14px;
+  background: color-mix(in srgb, #1e7fd8 14%, transparent);
+  color: #1e7fd8;
+}
+
+.grade-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.grade-list li {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 7px 4px;
+  border-top: 1px solid var(--border);
+  font-size: 13.5px;
+}
+
+.grade-list li[role='button'] {
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.grade-list li[role='button']:hover {
+  background: var(--surface-2);
+}
+
+.grade-value {
+  text-align: center;
+}
+
+.grade-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.grade-feedback {
+  display: block;
+  margin-top: 2px;
+  white-space: pre-wrap;
+}
+
+.grade-list .muted {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.grade-needed {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 13px;
+}
+
+.grade-needed.is-safe {
+  background: var(--ok-soft);
+}
+
+.grade-needed.is-impossible {
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+}
+
+.grade-target {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.select-small {
+  height: 30px;
+  font-size: 13px;
+  padding: 0 8px;
+}
+
+.empty.small {
+  padding: 18px;
+  text-align: left;
+}

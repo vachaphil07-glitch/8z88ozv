@@ -100,6 +100,7 @@ class SyncManager {
     try {
       const res = await connector.sync(this.context(id));
       this.store.setItems(id, res.items || [], { pendingOnly: Boolean(res.pendingOnly) });
+      if (res.grades) this.store.data.grades[id] = res.grades;
       if (res.timetable) {
         for (const [week, lessons] of Object.entries(res.timetable)) {
           this.store.data.timetable[week] = { fetched: Date.now(), lessons };

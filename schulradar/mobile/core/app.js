@@ -423,6 +423,8 @@ window.schulradar = {
   googleConnect: call((opts) => ctrl.googleConnect(opts || {})),
   googleDisconnect: call(() => ctrl.googleDisconnect()),
   syncCloud: call(() => ctrl.syncCloud()),
+  saveGrade: call((g) => ctrl.saveGrade(g || {})),
+  deleteGrade: call((id) => ctrl.deleteGrade(id)),
   updateSettings: call((patch) => ctrl.updateSettings(patch || {})),
   setCredentials: call((source, creds) => ctrl.setCredentials(source, creds || {})),
   login,

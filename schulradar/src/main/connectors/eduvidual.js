@@ -230,6 +230,81 @@ async function collect(ctx, call) {
   return parseMoodleEvents({ pending, events, base, from: ctx.range.from });
 }
 
+// ---------------------------------------------------------------- Noten
+
+function percentOf(text) {
+  const m = String(text || '').replace(',', '.').match(/(-?\d+(?:\.\d+)?)\s*%/);
+  return m ? Number(m[1]) : null;
+}
+
+function cleanGrade(text) {
+  const t = stripHtml(String(text || '')).trim();
+  return t === '-' || t === '' ? '' : t;
+}
+
+/** Moodle-Antworten -> [{courseId, course, total, percent, items:[{name, grade, percent, range, graded, feedback}]}] */
+function parseMoodleGrades({ overview = [], courses = [], itemsByCourse = {} }) {
+  const names = new Map(courses.map((c) => [Number(c.id), c.fullname || c.shortname || `Kurs ${c.id}`]));
+  const out = [];
+  const ids = new Set([...overview.map((g) => Number(g.courseid)), ...Object.keys(itemsByCourse).map(Number)]);
+  for (const id of ids) {
+    const ov = overview.find((g) => Number(g.courseid) === id) || {};
+    const raw = itemsByCourse[id] || [];
+    const items = [];
+    let total = cleanGrade(ov.grade);
+    let percent = null;
+    for (const it of raw) {
+      const grade = cleanGrade(it.gradeformatted);
+      if (it.itemtype === 'course') {
+        if (grade) total = grade;
+        percent = percentOf(it.percentageformatted);
+        continue;
+      }
+      if (it.itemtype === 'category' || !grade) continue;
+      const max = Number(it.grademax);
+      items.push({
+        name: cleanGrade(it.itemname) || 'Bewertung',
+        module: it.itemmodule || '',
+        grade,
+        percent: percentOf(it.percentageformatted),
+        range: Number.isFinite(max) && max > 0 ? `${Number(it.grademin) || 0}–${max}` : '',
+        graded: it.gradedategraded ? it.gradedategraded * 1000 : it.gradedatesubmitted ? it.gradedatesubmitted * 1000 : null,
+        feedback: cleanGrade(it.feedback).slice(0, 1000)
+      });
+    }
+    if (!total && !items.length) continue;
+    items.sort((a, b) => (b.graded || 0) - (a.graded || 0));
+    out.push({ courseId: id, course: names.get(id) || `Kurs ${id}`, total, percent, items });
+  }
+  return out.sort((a, b) => a.course.localeCompare(b.course, 'de'));
+}
+
+async function collectGrades(ctx, call) {
+  const info = await call('core_webservice_get_site_info', {});
+  const userid = info && info.userid;
+  if (!userid) return null;
+  const overview = ((await call('gradereport_overview_get_course_grades', { userid })) || {}).grades || [];
+  ctx.sample('noten_uebersicht', overview);
+  let courses = [];
+  try {
+    courses = (await call('core_enrol_get_users_courses', { userid })) || [];
+  } catch (err) {
+    ctx.log(`Kursnamen: ${err.message}`);
+  }
+  const itemsByCourse = {};
+  const withGrades = overview.filter((g) => cleanGrade(g.grade)).slice(0, 30);
+  for (const g of withGrades) {
+    try {
+      const r = await call('gradereport_user_get_grade_items', { courseid: g.courseid, userid });
+      const ug = ((r && r.usergrades) || [])[0];
+      itemsByCourse[g.courseid] = (ug && ug.gradeitems) || [];
+    } catch (err) {
+      ctx.log(`Noten Kurs ${g.courseid}: ${err.message}`);
+    }
+  }
+  return parseMoodleGrades({ overview, courses, itemsByCourse });
+}
+
 let lastLaunchTry = 0;
 
 const connector = {
@@ -257,16 +332,24 @@ const connector = {
   async sync(ctx) {
     let { call, mode } = await getCaller(ctx);
     ctx.log(`Abruf über ${mode === 'token' ? 'App-Zugang' : 'Browser-Sitzung'}`);
+    let items;
     try {
-      return { items: await collect(ctx, call) };
+      items = await collect(ctx, call);
     } catch (err) {
-      if (err.tokenInvalid) {
-        ctx.secrets.set('token', null);
-        ({ call } = await getCaller(ctx));
-        return { items: await collect(ctx, call) };
-      }
-      throw err;
+      if (!err.tokenInvalid) throw err;
+      ctx.secrets.set('token', null);
+      ({ call } = await getCaller(ctx));
+      items = await collect(ctx, call);
     }
+    // Noten sind ein Zusatz – ein Fehler dabei soll den Abruf der Aufgaben nicht stören
+    let grades;
+    try {
+      grades = await collectGrades(ctx, call);
+      if (grades) ctx.log(`Noten: ${grades.length} Kurse`);
+    } catch (err) {
+      ctx.log(`Noten nicht abrufbar: ${err.message}`);
+    }
+    return grades ? { items, grades } : { items };
   },
 
   /** Sobald man im Anmeldefenster eingeloggt ist: App-Zugang holen und Fenster schließen. */
@@ -301,6 +384,7 @@ const connector = {
 
 module.exports = connector;
 module.exports.parseMoodleEvents = parseMoodleEvents;
+module.exports.parseMoodleGrades = parseMoodleGrades;
 module.exports.cleanEventName = cleanEventName;
 module.exports.flattenParams = flattenParams;
 module.exports.decodeLaunchToken = decodeLaunchToken;

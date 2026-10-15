@@ -93,4 +93,29 @@ function demoTimetable(weekStart) {
   }));
 }
 
-module.exports = { demoItems, demoTimetable, startOfWeek };
+function demoGrades(now = Date.now()) {
+  const day = 24 * 3600 * 1000;
+  return {
+    eduvidual: [
+      {
+        courseId: 1,
+        course: '4AHIT – Softwareentwicklung',
+        total: '87,50',
+        percent: 87.5,
+        items: [
+          { name: 'Abgabe: REST-API mit Express', grade: '18,00', percent: 90, range: '0–20', graded: now - 3 * day, feedback: 'Saubere Struktur, Fehlerbehandlung fehlt teilweise.' },
+          { name: 'Quiz: HTTP-Grundlagen', grade: '8,50', percent: 85, range: '0–10', graded: now - 12 * day, feedback: '' }
+        ]
+      },
+      {
+        courseId: 2,
+        course: '4AHIT – Netzwerktechnik',
+        total: '72,00',
+        percent: 72,
+        items: [{ name: 'Laborprotokoll VLAN', grade: '36,00', percent: 72, range: '0–50', graded: now - 6 * day, feedback: 'Bitte Topologie-Skizze ergänzen.' }]
+      }
+    ]
+  };
+}
+
+module.exports = { demoItems, demoTimetable, demoGrades, startOfWeek };

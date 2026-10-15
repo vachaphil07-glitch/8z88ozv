@@ -3,7 +3,7 @@
 // main.js (Electron) und mobile/core (Android) reichen die Aufrufe der Oberfläche hierher weiter
 // und kümmern sich nur noch um das, was pro Gerät anders ist (Fenster, Dialoge, Teilen …).
 const { connectors, list: connectorList } = require('./connectors');
-const { demoItems, demoTimetable } = require('./connectors/demo');
+const { demoItems, demoTimetable, demoGrades } = require('./connectors/demo');
 const presets = require('./presets');
 const { createGoogleAuth } = require('./google');
 const { CloudSync } = require('./cloud-sync');
@@ -59,6 +59,9 @@ function createController({ store, secrets, sync, host, isDemo }) {
       items,
       local: snap.local,
       notes: snap.notes,
+      manualGrades: snap.manualGrades,
+      focusSessions: snap.focusSessions,
+      grades: demo ? demoGrades() : snap.grades,
       sourceState,
       settings: snap.settings,
       syncing: demo ? [] : [...sync.running.keys()],
@@ -179,6 +182,32 @@ function createController({ store, secrets, sync, host, isDemo }) {
 
     deleteNote(id) {
       store.deleteNote(id);
+      changed();
+    },
+
+    /** eigene Note (österreichisches System 1–5, Kommawerte erlaubt) */
+    saveGrade(g = {}) {
+      const grade = Number(String(g.grade).replace(',', '.'));
+      if (!Number.isFinite(grade) || grade < 1 || grade > 5) return { ok: false, error: 'Note zwischen 1 und 5 eingeben.' };
+      const subject = String(g.subject || '').trim().slice(0, 60);
+      if (!subject) return { ok: false, error: 'Fach fehlt.' };
+      const weight = Number(String(g.weight ?? 1).replace(',', '.'));
+      const clean = {
+        subject,
+        title: String(g.title || '').slice(0, 120),
+        kind: ['sa', 'test', 'mitarbeit', 'hue', 'muendlich', 'sonst'].includes(g.kind) ? g.kind : 'sonst',
+        grade,
+        weight: Number.isFinite(weight) && weight > 0 ? Math.min(weight, 10) : 1,
+        date: Number.isFinite(g.date) ? g.date : Date.now()
+      };
+      if (g.id) clean.id = String(g.id);
+      store.saveRecord('manualGrades', clean, 'grade');
+      changed();
+      return { ok: true };
+    },
+
+    deleteGrade(id) {
+      store.deleteRecord('manualGrades', id);
       changed();
     },
 

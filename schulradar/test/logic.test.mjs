@@ -115,3 +115,25 @@ test('Notizen: Suche, Fach, angeheftete zuerst, Titel aus erster Zeile', () => {
   assert.equal(L.noteTitle(notes[0]), 'Formeln Kapitel 3');
   assert.equal(L.notesForItem(notes, 'teams:x').length, 1);
 });
+
+test('Noten: Schnitt, Rundung und was man noch braucht', () => {
+  const e = [
+    { subject: 'AM', grade: 2, weight: 2 },
+    { subject: 'AM', grade: 4, weight: 1 },
+    { subject: 'E', grade: 1, weight: 1 }
+  ];
+  const [am, en] = L.gradeSummary(e);
+  assert.equal(am.subject, 'AM');
+  assert.equal(L.fmtGrade(am.average), '2,67');
+  assert.equal(am.grade, 3);
+  assert.equal(L.gradeFromAverage(2.5), 2, 'x,5 zählt noch zur besseren Note');
+  assert.equal(L.gradeFromAverage(2.51), 3);
+  assert.equal(L.gradeFromAverage(1), 1);
+  assert.equal(en.grade, 1);
+  // Für ein "Gut" (Schnitt ≤ 2,5) bei einer Schularbeit mit Gewicht 2: (2.5*5 - 8)/2 = 2.25
+  const n = L.neededGrade(am.entries, 2, 2);
+  assert.equal(n.status, 'possible');
+  assert.equal(L.fmtGrade(n.needed), '2,25');
+  assert.equal(L.neededGrade(am.entries, 4, 1).status, 'safe');
+  assert.equal(L.neededGrade([{ grade: 5, weight: 5 }], 1, 1).status, 'impossible');
+});

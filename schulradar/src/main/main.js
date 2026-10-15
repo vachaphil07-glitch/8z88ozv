@@ -253,6 +253,8 @@ function registerIpc() {
   ipcMain.handle('google:connect', (_e, opts) => ctrl.googleConnect(opts || {}));
   ipcMain.handle('google:disconnect', () => ctrl.googleDisconnect());
   ipcMain.handle('cloud:sync', () => ctrl.syncCloud());
+  ipcMain.handle('grade:save', (_e, g) => ctrl.saveGrade(g || {}));
+  ipcMain.handle('grade:delete', (_e, id) => ctrl.deleteGrade(id));
   ipcMain.handle('settings:update', (_e, patch) => ctrl.updateSettings(patch || {}));
   ipcMain.handle('creds:set', (_e, source, creds) => ctrl.setCredentials(source, creds || {}));
   ipcMain.handle('platform:logout', (_e, source) => ctrl.logout(source));

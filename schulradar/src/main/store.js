@@ -233,6 +233,7 @@ class Store {
 
   clearSource(source) {
     this.data.items[source] = [];
+    if (this.data.grades[source]) this.data.grades[source] = [];
     this.data.sourceState[source] = { status: 'new', lastSync: null, message: '' };
     this.save();
   }
