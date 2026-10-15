@@ -18,6 +18,7 @@ const { connectors } = require('../../src/main/connectors');
 const { startLoginFlow } = require('../../src/main/login-flow');
 const { plannedReminders, dailySummary, weeklyReviewAt } = require('../../src/main/reminders');
 const { weeklyReview, reviewText } = require('../../src/main/planner');
+const { widgetData } = require('../../src/main/widget');
 const { startOfDay, toIsoDate, DAY } = require('../../src/main/util/dates');
 const { Native, SystemBars } = require('./native');
 const { MobileSecrets } = require('./secrets');
@@ -77,7 +78,23 @@ function toast(message, kind = 'info') {
   emit('toast', { message, kind });
 }
 
+// Startbildschirm-Widget: nach Änderungen (gebündelt) neue Daten übergeben
+let widgetTimer = null;
+let lastWidget = '';
+function updateWidget() {
+  clearTimeout(widgetTimer);
+  widgetTimer = setTimeout(() => {
+    if (!store || !ctrl) return;
+    const data = widgetData({ items: ctrl.currentItems(), local: store.data.local, now: Date.now() });
+    const json = JSON.stringify({ ...data, at: 0 });
+    if (json === lastWidget) return;
+    lastWidget = json;
+    Native.widgetUpdate({ json: JSON.stringify(data) }).catch(() => {});
+  }, 1500);
+}
+
 function pushState() {
+  updateWidget();
   clearTimeout(pushTimer);
   pushTimer = setTimeout(() => {
     if (resetting) return;

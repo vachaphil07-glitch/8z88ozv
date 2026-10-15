@@ -29,6 +29,13 @@ const plugins = {
     calendarInsert: async (ev) => {
       window.__kalender = ev;
     },
+    widgetUpdate: async ({ json }) => {
+      window.__widget = JSON.parse(json);
+    },
+    loopbackStart: async () => {
+      throw new Error('In der Browser-Vorschau nicht verfügbar');
+    },
+    loopbackWait: noop,
     addListener: listener
   },
   SystemBars: { setStyle: noop }

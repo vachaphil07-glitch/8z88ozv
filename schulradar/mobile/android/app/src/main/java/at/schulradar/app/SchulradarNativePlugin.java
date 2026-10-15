@@ -402,6 +402,20 @@ public class SchulradarNativePlugin extends Plugin {
         out.flush();
     }
 
+    /** Daten für das Startbildschirm-Widget ablegen und das Widget neu zeichnen */
+    @PluginMethod
+    public void widgetUpdate(PluginCall call) {
+        final String json = call.getString("json", "{}");
+        pool.execute(() -> {
+            try {
+                SchulradarWidget.save(getContext(), json);
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
+        });
+    }
+
     /** Termin in der Kalender-App anlegen (z. B. Google Kalender) – ohne Kalender-Berechtigung. */
     @PluginMethod
     public void calendarInsert(PluginCall call) {

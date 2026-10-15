@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_bg">#F7FFFFFF</color>
+    <color name="widget_text">#1C2026</color>
+    <color name="widget_muted">#5D6877</color>
+    <color name="widget_exam_bg">#1FD6336C</color>
+    <color name="widget_exam_text">#A61E4D</color>
+    <string name="widget_description">Heute fällige Aufgaben und der nächste Test</string>
+
+    <style name="WidgetRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">3dp</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:textColor">@color/widget_muted</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:visibility">gone</item>
+    </style>
+</resources>
