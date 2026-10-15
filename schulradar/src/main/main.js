@@ -132,6 +132,7 @@ function createWindow() {
   });
   mainWindow.on('show', () => {
     if (!isDemo() && sync.lastSyncAge() > 10 * 60 * 1000) sync.syncAll();
+    else if (ctrl) ctrl.cloudSync.run({ reason: 'fenster geöffnet' });
   });
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//i.test(url)) shell.openExternal(url);
@@ -251,6 +252,7 @@ function registerIpc() {
   ipcMain.handle('gcal:remove', (_e, id) => ctrl.gcalRemove(id));
   ipcMain.handle('google:connect', (_e, opts) => ctrl.googleConnect(opts || {}));
   ipcMain.handle('google:disconnect', () => ctrl.googleDisconnect());
+  ipcMain.handle('cloud:sync', () => ctrl.syncCloud());
   ipcMain.handle('settings:update', (_e, patch) => ctrl.updateSettings(patch || {}));
   ipcMain.handle('creds:set', (_e, source, creds) => ctrl.setCredentials(source, creds || {}));
   ipcMain.handle('platform:logout', (_e, source) => ctrl.logout(source));

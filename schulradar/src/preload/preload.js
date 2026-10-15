@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('schulradar', {
   gcalRemove: (id) => ipcRenderer.invoke('gcal:remove', id),
   googleConnect: (opts) => ipcRenderer.invoke('google:connect', opts || {}),
   googleDisconnect: () => ipcRenderer.invoke('google:disconnect'),
+  syncCloud: () => ipcRenderer.invoke('cloud:sync'),
   updateSettings: (patch) => ipcRenderer.invoke('settings:update', patch),
   setCredentials: (source, creds) => ipcRenderer.invoke('creds:set', source, creds),
   login: (source) => ipcRenderer.invoke('platform:login', source),

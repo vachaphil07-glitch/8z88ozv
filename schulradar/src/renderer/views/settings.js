@@ -1,5 +1,7 @@
 // Einstellungen
 import { h, icon } from '../dom.js';
+import * as L from '../logic.js';
+import { googleAccountBox } from './google.js';
 
 function row(title, desc, control) {
   return h('div', { class: 'set-row' }, h('div', { class: 'set-text' }, h('strong', {}, title), desc ? h('span', {}, desc) : null), h('div', { class: 'set-control' }, control));
@@ -86,6 +88,39 @@ export function renderSettings(root, ctx) {
           'Eine Nachricht mit allem, was heute fällig ist.',
           h('div', { class: 'inline-controls' }, toggle(r.dailySummary, (v) => setR({ dailySummary: v }), 'Übersicht'), timeInput(r.summaryTime, (v) => setR({ summaryTime: v }), !r.enabled || !r.dailySummary))
         )
+      ),
+      section(
+        phone ? 'Abgleich mit dem PC' : 'Abgleich mit dem Handy',
+        'sync',
+        h(
+          'p',
+          { class: 'muted set-note' },
+          'Abgehakte und ausgeblendete Einträge, eigene Aufgaben, Notizen, eigene Noten und Fokus-Zeiten sind auf PC und Handy gleich. Die Daten liegen in einem versteckten App-Ordner in deinem Google Drive – Schulradar hat keinen eigenen Server.'
+        ),
+        googleAccountBox(ctx, { purpose: 'sync' }),
+        ctx.state.google && ctx.state.google.connected && ctx.state.google.scopes.drive
+          ? [
+              row('Abgleich einschalten', 'Auf beiden Geräten mit demselben Google-Konto einschalten.', toggle(Boolean(s.sync && s.sync.enabled), (v) => set({ sync: { enabled: v } }), 'Abgleich')),
+              s.sync && s.sync.enabled
+                ? row(
+                    'Status',
+                    ctx.state.cloud.running
+                      ? 'Wird abgeglichen …'
+                      : ctx.state.cloud.lastError
+                        ? `Fehler: ${ctx.state.cloud.lastError}`
+                        : ctx.state.cloud.lastRun
+                          ? `Zuletzt abgeglichen ${L.timeAgo(ctx.state.cloud.lastRun, ctx.now())}.`
+                          : 'Noch nicht abgeglichen.',
+                    h(
+                      'button',
+                      { class: 'btn', disabled: Boolean(ctx.state.cloud.running), onclick: () => ctx.api.syncCloud().then(() => ctx.toast('Abgeglichen.', 'ok')) },
+                      icon('sync', ctx.state.cloud.running ? 'spin' : ''),
+                      'Jetzt abgleichen'
+                    )
+                  )
+                : null
+            ]
+          : null
       ),
       section(
         'Abrufen',

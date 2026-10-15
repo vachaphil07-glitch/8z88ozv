@@ -6,6 +6,7 @@ const { connectors, list: connectorList } = require('./connectors');
 const { demoItems, demoTimetable } = require('./connectors/demo');
 const presets = require('./presets');
 const { createGoogleAuth } = require('./google');
+const { CloudSync } = require('./cloud-sync');
 
 /**
  * host: {
@@ -64,16 +65,30 @@ function createController({ store, secrets, sync, host, isDemo }) {
       platforms: connectorList.map(platformInfo),
       google: google.info(),
       secureStorage: secrets.available(),
+      cloud: { ...store.data.cloud, running: Boolean(cloud.running) },
       schoolName: presets.schoolName,
       now: Date.now()
     };
   }
 
   const push = () => host.pushState();
+  const cloud = new CloudSync({ store, google, onChange: push, log: (m) => sync.log('abgleich', m), isDemo });
+  /** nach eigenen Änderungen: Oberfläche aktualisieren und (verzögert) abgleichen */
+  const changed = () => {
+    push();
+    cloud.schedule();
+  };
+  // nach jedem regelmäßigen Abruf auch abgleichen
+  sync.afterSyncAll = () => cloud.run({ reason: 'regelmäßig' });
 
   return {
     currentItems,
     buildState,
+    cloudSync: cloud,
+
+    syncCloud() {
+      return cloud.run({ reason: 'manuell' }).then(() => buildState());
+    },
 
     async sync(source) {
       if (isDemo()) {
@@ -88,7 +103,7 @@ function createController({ store, secrets, sync, host, isDemo }) {
     setDone(id, done) {
       if (String(id).startsWith('gtasks:') && !isDemo()) return this.setGoogleTaskDone(id, done);
       store.setDone(id, done);
-      push();
+      changed();
     },
 
     /** Google-Tasks-Aufgabe sofort umschalten und an Google senden; bei Fehler zurücknehmen */
@@ -109,13 +124,12 @@ function createController({ store, secrets, sync, host, isDemo }) {
 
     setDismissed(id, dismissed) {
       store.setDismissed(id, dismissed);
-      push();
+      changed();
     },
 
     restoreDismissed() {
-      store.data.local.dismissed = {};
-      store.save();
-      push();
+      for (const id of Object.keys(store.data.local.dismissed)) store.setDismissed(id, false);
+      changed();
     },
 
     async saveOwnTask(task = {}) {
@@ -143,7 +157,7 @@ function createController({ store, secrets, sync, host, isDemo }) {
       };
       if (!clean.id) delete clean.id;
       store.saveOwnTask(clean);
-      push();
+      changed();
       return { ok: true };
     },
 
@@ -159,13 +173,13 @@ function createController({ store, secrets, sync, host, isDemo }) {
       if (note.id) clean.id = String(note.id);
       if (!clean.title.trim() && !clean.text.trim()) return { ok: false, error: 'Leere Notiz' };
       store.saveNote(clean);
-      push();
+      changed();
       return { ok: true };
     },
 
     deleteNote(id) {
       store.deleteNote(id);
-      push();
+      changed();
     },
 
     // ---------------------------------------------------------------- Google
@@ -198,7 +212,7 @@ function createController({ store, secrets, sync, host, isDemo }) {
         if (!store.settings.platforms.gtasks.enabled) store.updateSettings({ platforms: { gtasks: { enabled: true } } });
         push();
         if (!isDemo()) sync.syncOne('gtasks');
-        if (this.cloudSync) this.cloudSync.run({ reason: 'connect' });
+        cloud.run({ reason: 'verbunden' });
         return { ok: true };
       } catch (err) {
         push();
@@ -216,7 +230,7 @@ function createController({ store, secrets, sync, host, isDemo }) {
 
     deleteOwnTask(id) {
       store.deleteOwnTask(id);
-      push();
+      changed();
     },
 
     updateSettings(patch = {}) {
@@ -224,6 +238,7 @@ function createController({ store, secrets, sync, host, isDemo }) {
       store.updateSettings(patch);
       const after = store.settings;
       if ('syncIntervalMin' in patch) sync.schedule();
+      if (patch.sync && patch.sync.enabled === true && !before.sync.enabled) setTimeout(() => cloud.run({ reason: 'eingeschaltet' }), 100);
       if ('demo' in patch && before.demo && !after.demo) setTimeout(() => sync.syncAll(), 500);
       if (patch.platforms) {
         for (const [id, p] of Object.entries(patch.platforms)) {

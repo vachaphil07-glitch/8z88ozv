@@ -165,7 +165,13 @@ public class SchulradarNativePlugin extends Plugin {
         for (int hop = 0; hop < 10; hop++) {
             HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
             c.setInstanceFollowRedirects(false);
-            c.setRequestMethod(method);
+            // HttpURLConnection kennt kein PATCH – Google-Schnittstellen verstehen den Ersatz-Header
+            if ("PATCH".equals(method)) {
+                c.setRequestMethod("POST");
+                c.setRequestProperty("X-HTTP-Method-Override", "PATCH");
+            } else {
+                c.setRequestMethod(method);
+            }
             c.setConnectTimeout(timeout);
             c.setReadTimeout(timeout);
             c.setRequestProperty("User-Agent", ua);
@@ -179,7 +185,7 @@ public class SchulradarNativePlugin extends Plugin {
                 String ck = cm.getCookie(url);
                 if (ck != null && !ck.isEmpty()) c.setRequestProperty("Cookie", ck);
             }
-            if (body != null && !"GET".equals(method) && !"HEAD".equals(method)) {
+            if (body != null && !"GET".equals(method) && !"HEAD".equals(method) && !"DELETE".equals(method)) {
                 c.setDoOutput(true);
                 byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
                 c.setFixedLengthStreamingMode(bytes.length);

@@ -158,6 +158,7 @@ function setupAppEvents() {
     if (isActive) {
       pushState();
       if (!isDemo() && sync.lastSyncAge() > 10 * 60 * 1000) sync.syncAll();
+      else if (ctrl) ctrl.cloudSync.run({ reason: 'app geöffnet' });
     } else {
       store.saveNow();
     }
@@ -421,6 +422,7 @@ window.schulradar = {
   gcalRemove: call((id) => ctrl.gcalRemove(id)),
   googleConnect: call((opts) => ctrl.googleConnect(opts || {})),
   googleDisconnect: call(() => ctrl.googleDisconnect()),
+  syncCloud: call(() => ctrl.syncCloud()),
   updateSettings: call((patch) => ctrl.updateSettings(patch || {})),
   setCredentials: call((source, creds) => ctrl.setCredentials(source, creds || {})),
   login,

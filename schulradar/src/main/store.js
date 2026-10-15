@@ -31,6 +31,12 @@ function defaultData() {
       google: {
         clientId: '' // eigene OAuth-Client-ID (Desktop-App) für Google Tasks und den Abgleich
       },
+      sync: {
+        enabled: false // Abgleich PC ↔ Handy über Google Drive
+      },
+      grades: {
+        targets: {} // Fach -> Wunsch-Schnitt (z. B. 2.5)
+      },
       platforms: {
         webuntis: {
           enabled: true,
@@ -79,10 +85,17 @@ function defaultData() {
     sourceState: Object.fromEntries(SOURCES.map((s) => [s, { status: 'new', lastSync: null, message: '' }])),
     local: {
       done: {}, // id -> Zeitpunkt, an dem in der App abgehakt wurde
-      dismissed: {} // id -> Zeitpunkt, an dem ein Eintrag ausgeblendet wurde
+      undone: {}, // id -> Zeitpunkt, an dem das Häkchen wieder entfernt wurde (für den Abgleich)
+      dismissed: {}, // id -> Zeitpunkt, an dem ein Eintrag ausgeblendet wurde
+      undismissed: {}
     },
     ownTasks: [],
     notes: [], // [{id, title, text, subject, itemId, pinned, color, created, updated}]
+    manualGrades: [], // [{id, subject, title, kind, grade, weight, date, updated}]
+    focusSessions: [], // [{id, label, itemId, start, minutes, updated}]
+    deleted: {}, // id -> Zeitpunkt des Löschens (Grabsteine für den Abgleich)
+    grades: { eduvidual: [] }, // von Plattformen abgerufene Noten
+    cloud: { lastRun: null, lastError: '', fileId: '' },
     reminders: { fired: {}, lastSummary: '' },
     timetable: {}
   };
@@ -225,47 +238,62 @@ class Store {
   }
 
   setDone(id, done) {
-    if (done) this.data.local.done[id] = Date.now();
-    else delete this.data.local.done[id];
-    this.save();
+    this.setFlag('done', 'undone', id, done);
   }
 
   setDismissed(id, dismissed) {
-    if (dismissed) this.data.local.dismissed[id] = Date.now();
-    else delete this.data.local.dismissed[id];
+    this.setFlag('dismissed', 'undismissed', id, dismissed);
+  }
+
+  /** Markierung setzen; das Gegenteil wird mit Zeitpunkt gemerkt, damit der Abgleich weiß, was neuer ist. */
+  setFlag(onKey, offKey, id, on) {
+    const local = this.data.local;
+    const had = Boolean(local[onKey][id]);
+    if (on) {
+      local[onKey][id] = Date.now();
+      delete local[offKey][id];
+    } else {
+      delete local[onKey][id];
+      if (had) local[offKey][id] = Date.now();
+    }
+    this.save();
+  }
+
+  /** Eintrag einer abgeglichenen Sammlung anlegen oder ändern */
+  saveRecord(collection, record, prefix) {
+    const list = this.data[collection];
+    const now = Date.now();
+    const idx = record.id ? list.findIndex((r) => r.id === record.id) : -1;
+    if (idx >= 0) list[idx] = { ...list[idx], ...record, updated: now };
+    else list.push({ ...record, id: record.id || `${prefix}:${now.toString(36)}${Math.random().toString(36).slice(2, 6)}`, created: now, updated: now });
+    this.save();
+    return idx >= 0 ? list[idx] : list[list.length - 1];
+  }
+
+  deleteRecord(collection, id) {
+    this.data[collection] = this.data[collection].filter((r) => r.id !== id);
+    this.data.deleted[id] = Date.now();
     this.save();
   }
 
   saveOwnTask(task) {
-    const list = this.data.ownTasks;
-    const idx = list.findIndex((t) => t.id === task.id);
-    if (idx >= 0) list[idx] = { ...list[idx], ...task, updated: Date.now() };
-    else list.push({ ...task, id: task.id || `own:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, created: Date.now() });
-    this.save();
-    return list;
+    this.saveRecord('ownTasks', task, 'own');
+    return this.data.ownTasks;
   }
 
   deleteOwnTask(id) {
-    this.data.ownTasks = this.data.ownTasks.filter((t) => t.id !== id);
+    this.deleteRecord('ownTasks', id);
     delete this.data.local.done[id];
     this.save();
   }
 
   saveNote(note) {
-    const list = this.data.notes;
-    const idx = list.findIndex((n) => n.id === note.id);
-    if (idx >= 0) list[idx] = { ...list[idx], ...note, updated: Date.now() };
-    else {
-      const id = `note:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-      list.push({ ...note, id, created: Date.now(), updated: Date.now() });
-    }
-    this.save();
-    return list;
+    this.saveRecord('notes', note, 'note');
+    return this.data.notes;
   }
 
   deleteNote(id) {
-    this.data.notes = this.data.notes.filter((n) => n.id !== id);
-    this.save();
+    this.deleteRecord('notes', id);
   }
 
   /** Eintrag einer Plattform kurz lokal ändern (z. B. sofort nach dem Abhaken in Google Tasks) */
@@ -288,6 +316,10 @@ class Store {
       items,
       local: this.data.local,
       notes: this.data.notes,
+      manualGrades: this.data.manualGrades,
+      focusSessions: this.data.focusSessions,
+      grades: this.data.grades,
+      cloud: this.data.cloud,
       sourceState: this.data.sourceState,
       settings: this.data.settings
     };
@@ -296,7 +328,7 @@ class Store {
   /** Alte lokale Markierungen aufräumen (Einträge, die es nicht mehr gibt). */
   prune() {
     const known = new Set(this.snapshot().items.map((i) => i.id));
-    const cutoff = Date.now() - 180 * 24 * 3600 * 1000;
+    const cutoff = Date.now() - 365 * 24 * 3600 * 1000;
     for (const bucket of ['done', 'dismissed']) {
       for (const [id, ts] of Object.entries(this.data.local[bucket])) {
         if (!known.has(id) && ts < cutoff) delete this.data.local[bucket][id];

@@ -140,6 +140,7 @@ class SyncManager {
       browserBased
     ]);
     this.store.prune();
+    if (this.afterSyncAll) await this.afterSyncAll();
   }
 
   schedule() {
