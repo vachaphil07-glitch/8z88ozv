@@ -86,7 +86,18 @@ export function openTaskDialog(ctx, task = {}) {
         const submit = e.target.querySelector('button[type=submit]');
         if (submit) submit.disabled = true;
         ctx.api
-          .saveOwnTask({ id: task.id, title, subject: f.subject.value.trim(), kind: f.kind.value, due, allDay, description: f.description.value.trim(), target })
+          .saveOwnTask({
+            id: task.id,
+            title,
+            subject: f.subject.value.trim(),
+            kind: f.kind.value,
+            due,
+            allDay,
+            description: f.description.value.trim(),
+            target,
+            // Lerneinheit: Dauer beim Verschieben beibehalten
+            end: task.kind === 'lernen' && task.end && due && !allDay ? due + (task.end - task.due) : undefined
+          })
           .then((res) => {
             if (res && res.ok === false) {
               if (submit) submit.disabled = false;
@@ -112,7 +123,7 @@ export function openTaskDialog(ctx, task = {}) {
         h(
           'select',
           { name: 'kind', class: 'select' },
-          [['task', 'Aufgabe'], ['test', 'Test / Schularbeit'], ['termin', 'Termin']].map(([v, label]) => h('option', { value: v, selected: (task.kind || 'task') === v }, label))
+          [['task', 'Aufgabe'], ['test', 'Test / Schularbeit'], ['termin', 'Termin'], ...(task.kind === 'lernen' ? [['lernen', 'Lerneinheit']] : [])].map(([v, label]) => h('option', { value: v, selected: (task.kind || 'task') === v }, label))
         )
       )
     ),

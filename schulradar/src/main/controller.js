@@ -7,6 +7,8 @@ const { demoItems, demoTimetable, demoGrades } = require('./connectors/demo');
 const presets = require('./presets');
 const { createGoogleAuth } = require('./google');
 const { CloudSync } = require('./cloud-sync');
+const { planStudy, weeklyReview, startOfWeek } = require('./planner');
+const { addDays } = require('./util/dates');
 
 /**
  * host: {
@@ -69,6 +71,7 @@ function createController({ store, secrets, sync, host, isDemo }) {
       google: google.info(),
       secureStorage: secrets.available(),
       cloud: { ...store.data.cloud, running: Boolean(cloud.running) },
+      review: weeklyReview({ items, local: snap.local, focusSessions: snap.focusSessions, now: Date.now() }),
       schoolName: presets.schoolName,
       now: Date.now()
     };
@@ -153,11 +156,15 @@ function createController({ store, secrets, sync, host, isDemo }) {
         id: task.id || undefined,
         title: String(task.title || '').slice(0, 300),
         subject: String(task.subject || '').slice(0, 60),
-        kind: ['task', 'test', 'termin'].includes(task.kind) ? task.kind : 'task',
+        kind: ['task', 'test', 'termin', 'lernen'].includes(task.kind) ? task.kind : 'task',
         due: Number.isFinite(task.due) ? task.due : null,
         allDay: Boolean(task.allDay),
         description: String(task.description || '').slice(0, 5000)
       };
+      if (clean.kind === 'lernen') {
+        if (Number.isFinite(task.end) && clean.due && task.end > clean.due) clean.end = task.end;
+        if (task.examId) clean.examId = String(task.examId).slice(0, 300);
+      }
       if (!clean.id) delete clean.id;
       store.saveOwnTask(clean);
       changed();
@@ -319,6 +326,69 @@ function createController({ store, secrets, sync, host, isDemo }) {
       store.clearSource(source);
       push();
       return buildState();
+    },
+
+    /** Lernvorschläge vor Tests – mit dem Stundenplan der betroffenen Wochen */
+    async studyPlan() {
+      const now = Date.now();
+      const settings = store.settings.study;
+      const lessons = [];
+      const hasUntis = isDemo() || (store.data.sourceState.webuntis || {}).lastSync;
+      if (hasUntis) {
+        for (let w = startOfWeek(now); w < now + (settings.horizonDays + 7) * 86400000; w = addDays(w, 7)) {
+          try {
+            const res = isDemo() ? { lessons: demoTimetable(w) } : await sync.timetable(w);
+            lessons.push(...(res.lessons || []));
+          } catch (_) {
+            /* ohne Stundenplan planen */
+          }
+        }
+      }
+      return { ...planStudy({ items: currentItems(), lessons, local: store.data.local, settings, now }), withTimetable: lessons.length > 0 };
+    },
+
+    /** Vorgeschlagene Lerneinheiten als eigene Aufgaben übernehmen */
+    acceptStudy(sessions = []) {
+      let n = 0;
+      for (const s of sessions.slice(0, 30)) {
+        if (!Number.isFinite(s.start) || !Number.isFinite(s.end)) continue;
+        store.saveOwnTask({
+          title: `Lernen: ${String(s.examTitle || 'Test').slice(0, 120)}${s.subject ? ` ${String(s.subject).slice(0, 40)}` : ''}`,
+          subject: String(s.subject || '').slice(0, 60),
+          kind: 'lernen',
+          due: s.start,
+          end: s.end,
+          allDay: false,
+          examId: String(s.examId || ''),
+          description: ''
+        });
+        n++;
+      }
+      changed();
+      return { ok: true, count: n };
+    },
+
+    /** abgeschlossene Fokus-Einheit speichern */
+    logFocus(f = {}) {
+      const minutes = Math.round(Number(f.minutes));
+      if (!Number.isFinite(minutes) || minutes < 1) return { ok: false };
+      store.saveRecord(
+        'focusSessions',
+        {
+          label: String(f.label || '').trim().slice(0, 80),
+          itemId: f.itemId ? String(f.itemId).slice(0, 300) : '',
+          start: Number.isFinite(f.start) ? f.start : Date.now() - minutes * 60000,
+          minutes: Math.min(minutes, 600)
+        },
+        'focus'
+      );
+      changed();
+      return { ok: true };
+    },
+
+    deleteFocus(id) {
+      store.deleteRecord('focusSessions', id);
+      changed();
     },
 
     async timetable(weekStart) {

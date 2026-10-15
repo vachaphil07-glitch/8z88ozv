@@ -68,6 +68,7 @@ const isDemo = () => FORCE_DEMO || Boolean(store && store.settings.demo);
 // ---------------------------------------------------------------- Zustand für die Oberfläche
 
 let ctrl = null;
+let focusTimer = null;
 const currentItems = () => ctrl.currentItems();
 const buildState = () => ctrl.buildState();
 
@@ -186,7 +187,7 @@ function updateTrayTooltip() {
   tray.setToolTip(`Schulradar – ${open} offen${overdue ? `, ${overdue} überfällig` : ''}`);
 }
 
-function notify({ title, body, itemId }) {
+function notify({ title, body, itemId, view }) {
   if (!Notification.isSupported()) return;
   const n = new Notification({ title, body, icon: ICON });
   liveNotifications.add(n);
@@ -195,6 +196,7 @@ function notify({ title, body, itemId }) {
     forget();
     showWindow();
     if (itemId && mainWindow) mainWindow.webContents.send('focus-item', itemId);
+    else if (view && mainWindow) mainWindow.webContents.send('navigate', view);
   });
   n.on('close', forget);
   setTimeout(forget, 10 * 60 * 1000);
@@ -255,6 +257,16 @@ function registerIpc() {
   ipcMain.handle('cloud:sync', () => ctrl.syncCloud());
   ipcMain.handle('grade:save', (_e, g) => ctrl.saveGrade(g || {}));
   ipcMain.handle('grade:delete', (_e, id) => ctrl.deleteGrade(id));
+  ipcMain.handle('study:plan', () => ctrl.studyPlan());
+  ipcMain.handle('study:accept', (_e, sessions) => ctrl.acceptStudy(Array.isArray(sessions) ? sessions : []));
+  ipcMain.handle('focus:log', (_e, f) => ctrl.logFocus(f || {}));
+  ipcMain.handle('focus:delete', (_e, id) => ctrl.deleteFocus(id));
+  // Fokus-Timer: Windows-Benachrichtigung zum Ende der Phase (auch wenn das Fenster versteckt ist)
+  ipcMain.handle('focus:alarm', (_e, alarm) => {
+    clearTimeout(focusTimer);
+    if (!alarm || !Number.isFinite(alarm.at)) return;
+    focusTimer = setTimeout(() => notify({ title: String(alarm.title || 'Fokus-Timer'), body: String(alarm.body || ''), view: 'learn' }), Math.max(0, alarm.at - Date.now()));
+  });
   ipcMain.handle('settings:update', (_e, patch) => ctrl.updateSettings(patch || {}));
   ipcMain.handle('creds:set', (_e, source, creds) => ctrl.setCredentials(source, creds || {}));
   ipcMain.handle('platform:logout', (_e, source) => ctrl.logout(source));

@@ -26,7 +26,7 @@ const TYPE_LABELS = {
   task: 'Aufgabe'
 };
 
-const OWN_KIND_LABELS = { task: 'Aufgabe', test: 'Test', termin: 'Termin' };
+const OWN_KIND_LABELS = { task: 'Aufgabe', test: 'Test', termin: 'Termin', lernen: 'Lernen' };
 
 export const WEEKDAYS_SHORT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 export const WEEKDAYS_LONG = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
@@ -469,4 +469,44 @@ export function neededGrade(entries, target, weight = 1) {
 export function fmtGrade(n, digits = 2) {
   if (n === null || n === undefined || !Number.isFinite(n)) return '–';
   return n.toFixed(digits).replace('.', ',');
+}
+
+// ---------------------------------------------------------------- Fokus-Timer
+
+/** Minuten heute, diese Woche und pro Thema (Woche / gesamt) */
+export function focusStats(sessions, now = Date.now()) {
+  const today = startOfDay(now);
+  const week = startOfWeek(now);
+  let todayMin = 0;
+  let weekMin = 0;
+  const labels = new Map();
+  for (const s of sessions || []) {
+    const min = Number(s.minutes) || 0;
+    if (s.start >= today) todayMin += min;
+    if (s.start >= week) weekMin += min;
+    const key = String(s.label || '').trim() || 'Ohne Thema';
+    const l = labels.get(key) || { label: key, weekMin: 0, totalMin: 0, count: 0 };
+    l.totalMin += min;
+    l.count++;
+    if (s.start >= week) l.weekMin += min;
+    labels.set(key, l);
+  }
+  const byLabel = [...labels.values()].sort((a, b) => b.weekMin - a.weekMin || b.totalMin - a.totalMin);
+  return { todayMin, weekMin, byLabel };
+}
+
+/** 95 -> "1 h 35 min" */
+export function fmtMinutes(min) {
+  const m = Math.round(Number(min) || 0);
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  return m % 60 ? `${h} h ${m % 60} min` : `${h} h`;
+}
+
+/** 1500000 -> "25:00" */
+export function fmtClock(ms) {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(total / 60);
+  const sec = total % 60;
+  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }

@@ -137,3 +137,19 @@ test('Noten: Schnitt, Rundung und was man noch braucht', () => {
   assert.equal(L.neededGrade(am.entries, 4, 1).status, 'safe');
   assert.equal(L.neededGrade([{ grade: 5, weight: 5 }], 1, 1).status, 'impossible');
 });
+
+test('Fokus-Statistik und Zeitformat', () => {
+  const s = [
+    { start: at(2026, 9, 23, 9), minutes: 25, label: 'Diplomarbeit' },
+    { start: at(2026, 9, 21, 9), minutes: 50, label: 'Diplomarbeit' },
+    { start: at(2026, 9, 14, 9), minutes: 30, label: 'AM' }
+  ];
+  const st = L.focusStats(s, NOW);
+  assert.equal(st.todayMin, 25);
+  assert.equal(st.weekMin, 75);
+  assert.deepEqual(st.byLabel.map((l) => [l.label, l.weekMin, l.totalMin]), [['Diplomarbeit', 75, 75], ['AM', 0, 30]]);
+  assert.equal(L.fmtMinutes(95), '1 h 35 min');
+  assert.equal(L.fmtMinutes(120), '2 h');
+  assert.equal(L.fmtClock(25 * 60000), '25:00');
+  assert.equal(L.fmtClock(61500), '01:02');
+});

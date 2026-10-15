@@ -87,6 +87,11 @@ export function renderSettings(root, ctx) {
           'Morgendliche Übersicht',
           'Eine Nachricht mit allem, was heute fällig ist.',
           h('div', { class: 'inline-controls' }, toggle(r.dailySummary, (v) => setR({ dailySummary: v }), 'Übersicht'), timeInput(r.summaryTime, (v) => setR({ summaryTime: v }), !r.enabled || !r.dailySummary))
+        ),
+        row(
+          'Wochenrückblick am Sonntag',
+          'Was du diese Woche geschafft hast, Fokus-Zeit und was nächste Woche ansteht.',
+          h('div', { class: 'inline-controls' }, toggle(r.weeklyReview, (v) => setR({ weeklyReview: v }), 'Wochenrückblick'), timeInput(r.weeklyTime, (v) => setR({ weeklyTime: v }), !r.enabled || !r.weeklyReview))
         )
       ),
       section(

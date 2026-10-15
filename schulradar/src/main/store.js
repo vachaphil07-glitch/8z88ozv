@@ -26,7 +26,9 @@ function defaultData() {
         eveningBefore: true, // Tests & ganztägige Abgaben: Erinnerung am Vorabend
         eveningTime: '18:00',
         dailySummary: true,
-        summaryTime: '07:00'
+        summaryTime: '07:00',
+        weeklyReview: true, // Sonntag: Rückblick auf die Woche und Ausblick
+        weeklyTime: '18:00'
       },
       google: {
         clientId: '' // eigene OAuth-Client-ID (Desktop-App) für Google Tasks und den Abgleich
@@ -35,7 +37,23 @@ function defaultData() {
         enabled: false // Abgleich PC ↔ Handy über Google Drive
       },
       grades: {
-        targets: {} // Fach -> Wunsch-Schnitt (z. B. 2.5)
+        targets: {} // Fach -> Ziel-Note (1–4)
+      },
+      study: {
+        horizonDays: 14,
+        sessionMin: 45,
+        sessionsPerExam: 3,
+        sessionsPerSchularbeit: 4,
+        spreadDays: 7,
+        weekdayFrom: '15:00',
+        weekdayTo: '20:00',
+        weekendFrom: '10:00',
+        weekendTo: '18:00',
+        bufferMin: 15
+      },
+      focus: {
+        focusMin: 25,
+        breakMin: 5
       },
       platforms: {
         webuntis: {
@@ -96,7 +114,7 @@ function defaultData() {
     deleted: {}, // id -> Zeitpunkt des Löschens (Grabsteine für den Abgleich)
     grades: { eduvidual: [] }, // von Plattformen abgerufene Noten
     cloud: { lastRun: null, lastError: '', fileId: '' },
-    reminders: { fired: {}, lastSummary: '' },
+    reminders: { fired: {}, lastSummary: '', lastWeekly: '' },
     timetable: {}
   };
 }

@@ -16,13 +16,15 @@ const { SyncManager } = require('../../src/main/sync');
 const { createController } = require('../../src/main/controller');
 const { connectors } = require('../../src/main/connectors');
 const { startLoginFlow } = require('../../src/main/login-flow');
-const { plannedReminders, dailySummary } = require('../../src/main/reminders');
+const { plannedReminders, dailySummary, weeklyReviewAt } = require('../../src/main/reminders');
+const { weeklyReview, reviewText } = require('../../src/main/planner');
 const { startOfDay, toIsoDate, DAY } = require('../../src/main/util/dates');
 const { Native, SystemBars } = require('./native');
 const { MobileSecrets } = require('./secrets');
 
 const DATA_FILE = 'schulradar-daten.json';
 const CHANNEL = 'erinnerungen';
+const FOCUS_NOTIFICATION = 990001; // Fokus-Timer – wird beim Neuplanen der Erinnerungen nicht gelöscht
 
 // ---------------------------------------------------------------- Ereignisse an die Oberfläche
 
@@ -39,7 +41,7 @@ function emit(channel, payload) {
         console.error(err);
       }
     }
-  } else if (channel === 'focus-item') {
+  } else if (channel === 'focus-item' || channel === 'navigate') {
     pending[channel] = payload; // z. B. App wurde über eine Benachrichtigung gestartet
   }
 }
@@ -204,8 +206,9 @@ async function setupNotifications() {
     /* ältere Android-Versionen */
   }
   LocalNotifications.addListener('localNotificationActionPerformed', ({ notification }) => {
-    const itemId = notification && notification.extra && notification.extra.itemId;
-    if (itemId) emit('focus-item', itemId);
+    const extra = (notification && notification.extra) || {};
+    if (extra.itemId) emit('focus-item', extra.itemId);
+    else if (extra.view) emit('navigate', extra.view);
   });
   try {
     const perm = await LocalNotifications.checkPermissions();
@@ -252,9 +255,19 @@ async function doPlanReminders() {
     }
   }
 
+  if (perm.display === 'granted') {
+    let at = weeklyReviewAt(settings, now);
+    if (at && at <= now) at = weeklyReviewAt(settings, at + DAY);
+    if (at) {
+      const r = weeklyReview({ items, local, focusSessions: store.data.focusSessions, now: at });
+      notes.push({ id: notificationId(`weekly|${toIsoDate(at)}`), title: 'Dein Wochenrückblick', body: reviewText(r), largeBody: reviewText(r), at, extra: { view: 'learn' } });
+    }
+  }
+
   const planned = await LocalNotifications.getPending();
-  if (planned.notifications && planned.notifications.length) {
-    await LocalNotifications.cancel({ notifications: planned.notifications.map((n) => ({ id: n.id })) });
+  const old = (planned.notifications || []).filter((n) => n.id !== FOCUS_NOTIFICATION);
+  if (old.length) {
+    await LocalNotifications.cancel({ notifications: old.map((n) => ({ id: n.id })) });
   }
   if (!notes.length) return;
   await LocalNotifications.schedule({
@@ -321,6 +334,31 @@ async function openUrl(url, external) {
 }
 
 // ---------------------------------------------------------------- Diagnose & Zurücksetzen
+
+/** Fokus-Timer: Benachrichtigung zum Ende der Phase – kommt auch, wenn die App im Hintergrund ist */
+async function focusAlarm(alarm) {
+  try {
+    await LocalNotifications.cancel({ notifications: [{ id: FOCUS_NOTIFICATION }] });
+    if (!alarm || !Number.isFinite(alarm.at) || alarm.at <= Date.now()) return;
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: FOCUS_NOTIFICATION,
+          title: String(alarm.title || 'Fokus-Timer'),
+          body: String(alarm.body || ''),
+          channelId: CHANNEL,
+          smallIcon: 'ic_stat_schulradar',
+          iconColor: '#3B5BDB',
+          extra: { view: 'learn' },
+          isExactNotification: false,
+          schedule: { at: new Date(alarm.at), allowWhileIdle: true }
+        }
+      ]
+    });
+  } catch (err) {
+    console.warn('Fokus-Timer:', err);
+  }
+}
 
 async function exportDiagnostics(source) {
   await ready;
@@ -424,6 +462,11 @@ window.schulradar = {
   googleDisconnect: call(() => ctrl.googleDisconnect()),
   syncCloud: call(() => ctrl.syncCloud()),
   saveGrade: call((g) => ctrl.saveGrade(g || {})),
+  studyPlan: call(() => ctrl.studyPlan()),
+  acceptStudy: call((sessions) => ctrl.acceptStudy(sessions || [])),
+  logFocus: call((f) => ctrl.logFocus(f || {})),
+  deleteFocus: call((id) => ctrl.deleteFocus(id)),
+  focusAlarm,
   deleteGrade: call((id) => ctrl.deleteGrade(id)),
   updateSettings: call((patch) => ctrl.updateSettings(patch || {})),
   setCredentials: call((source, creds) => ctrl.setCredentials(source, creds || {})),

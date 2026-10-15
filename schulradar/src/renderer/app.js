@@ -7,6 +7,8 @@ import { renderMonth } from './views/month.js';
 import { renderPlatforms } from './views/platforms.js';
 import { renderSettings } from './views/settings.js';
 import { renderNotes, openNoteDialog } from './views/notes.js';
+import { renderGrades } from './views/grades.js';
+import { renderLearn, startFocusWatcher, focusRunning } from './views/learn.js';
 import { openTaskDialog, openItemDialog, openOnboarding, confirmDialog, closeModal, toast } from './views/dialogs.js';
 import { closeCalendarMenu, closeCalendarMenuIfDetached } from './views/calendar-menu.js';
 import { icsCalendar, upcomingEvents } from './calendar.js';
@@ -17,6 +19,8 @@ const VIEWS = {
   list: { title: 'Übersicht', icon: 'list', render: renderList, search: true },
   week: { title: 'Woche', icon: 'week', render: renderWeek, search: true },
   month: { title: 'Monat', icon: 'month', render: renderMonth, search: true },
+  learn: { title: 'Lernen', icon: 'learn', render: renderLearn },
+  grades: { title: 'Noten', icon: 'grades', render: renderGrades, search: true },
   notes: { title: 'Notizen', icon: 'note', render: renderNotes, search: true },
   platforms: { title: 'Plattformen', icon: 'plug', render: renderPlatforms },
   settings: { title: 'Einstellungen', icon: 'settings', render: renderSettings }
@@ -55,7 +59,8 @@ const ui = {
   timetable: {},
   drafts: {},
   graph: {},
-  noteSubject: ''
+  noteSubject: '',
+  moreOpen: false
 };
 
 let state = null;
@@ -77,6 +82,7 @@ const actions = ctx.actions;
 
 actions.go = (view) => {
   if (!VIEWS[view]) return;
+  ui.moreOpen = false;
   ui.view = view;
   ui.expanded = null;
   savePrefs();
@@ -229,23 +235,78 @@ media.addEventListener('change', applyTheme);
 
 // ---------------------------------------------------------------- Rendern
 
+// Am Handy passen nicht alle Bereiche in die untere Leiste – der Rest steckt unter „Mehr“
+const PHONE_MAIN = ['list', 'week', 'learn', 'notes'];
+
+function navButton(key, v, badge, onclick) {
+  return h(
+    'button',
+    { class: `nav-item ${ui.view === key ? 'is-active' : ''}`, onclick, 'aria-current': ui.view === key ? 'page' : null },
+    icon(v.icon),
+    h('span', {}, v.title),
+    badge
+  );
+}
+
 function renderNav() {
   const nav = clear(document.getElementById('nav'));
   const st = L.stats(state.items, { local: state.local, now: ctx.now() });
   const problems = state.demo
     ? 0
     : state.platforms.filter((p) => state.settings.platforms[p.id].enabled && ['login', 'error', 'config'].includes((state.sourceState[p.id] || {}).status)).length;
+  const badgeFor = (key) => {
+    if (key === 'list' && st.open) return h('span', { class: `nav-badge ${st.overdue ? 'is-danger' : ''}` }, String(st.open));
+    if (key === 'platforms' && problems) return h('span', { class: 'nav-badge is-warn', title: 'Plattform braucht Aufmerksamkeit' }, '!');
+    if (key === 'learn' && focusRunning()) return h('span', { class: 'nav-badge is-live', title: 'Fokus-Timer läuft' }, '●');
+    return null;
+  };
+  const phone = isPhone();
   for (const [key, v] of Object.entries(VIEWS)) {
-    let badge = null;
-    if (key === 'list' && st.open) badge = h('span', { class: `nav-badge ${st.overdue ? 'is-danger' : ''}` }, String(st.open));
-    if (key === 'platforms' && problems) badge = h('span', { class: 'nav-badge is-warn', title: 'Plattform braucht Aufmerksamkeit' }, '!');
-    nav.append(
+    if (phone && !PHONE_MAIN.includes(key)) continue;
+    nav.append(navButton(key, v, badgeFor(key), () => actions.go(key)));
+  }
+  const menuRoot = document.getElementById('more-menu');
+  if (menuRoot) menuRoot.remove();
+  if (!phone) return;
+  const others = Object.keys(VIEWS).filter((k) => !PHONE_MAIN.includes(k));
+  const otherActive = others.includes(ui.view);
+  nav.append(
+    h(
+      'button',
+      {
+        class: `nav-item ${otherActive || ui.moreOpen ? 'is-active' : ''}`,
+        'aria-expanded': ui.moreOpen ? 'true' : 'false',
+        onclick: () => {
+          ui.moreOpen = !ui.moreOpen;
+          renderNav();
+        }
+      },
+      icon('more'),
+      h('span', {}, otherActive ? VIEWS[ui.view].title : 'Mehr'),
+      others.some((k) => badgeFor(k)) ? h('span', { class: 'nav-badge is-warn' }, '!') : null
+    )
+  );
+  if (ui.moreOpen) {
+    document.body.append(
       h(
-        'button',
-        { class: `nav-item ${ui.view === key ? 'is-active' : ''}`, onclick: () => actions.go(key), 'aria-current': ui.view === key ? 'page' : null },
-        icon(v.icon),
-        h('span', {}, v.title),
-        badge
+        'div',
+        {
+          id: 'more-menu',
+          class: 'more-overlay',
+          onclick: (e) => {
+            if (e.target.id === 'more-menu') {
+              ui.moreOpen = false;
+              renderNav();
+            }
+          }
+        },
+        h(
+          'div',
+          { class: 'more-sheet', role: 'menu' },
+          others.map((key) =>
+            h('button', { class: `more-item ${ui.view === key ? 'is-active' : ''}`, role: 'menuitem', onclick: () => actions.go(key) }, icon(VIEWS[key].icon), h('span', {}, VIEWS[key].title), badgeFor(key))
+          )
+        )
       )
     );
   }
@@ -469,7 +530,10 @@ api.onGraphCode((payload) => {
 document.addEventListener('keydown', (e) => {
   const mod = e.ctrlKey || e.metaKey;
   if (e.key === 'Escape') {
-    if (document.body.classList.contains('has-modal')) closeModal();
+    if (ui.moreOpen) {
+      ui.moreOpen = false;
+      renderNav();
+    } else if (document.body.classList.contains('has-modal')) closeModal();
     else if (ui.expanded) {
       ui.expanded = null;
       render();
@@ -486,7 +550,7 @@ document.addEventListener('keydown', (e) => {
   } else if ((mod && e.key.toLowerCase() === 'r') || e.key === 'F5') {
     e.preventDefault();
     actions.sync();
-  } else if (mod && /^[1-6]$/.test(e.key)) {
+  } else if (mod && /^[1-8]$/.test(e.key)) {
     e.preventDefault();
     actions.go(Object.keys(VIEWS)[Number(e.key) - 1]);
   }
@@ -496,6 +560,11 @@ document.addEventListener('keydown', (e) => {
 if (api.onBack) {
   api.onBack(() => {
     if (closeCalendarMenu()) return true;
+    if (ui.moreOpen) {
+      ui.moreOpen = false;
+      renderNav();
+      return true;
+    }
     if (document.body.classList.contains('has-modal')) {
       closeModal();
       return true;
@@ -519,4 +588,5 @@ setInterval(() => {
   if (!document.body.classList.contains('has-modal') && !(document.activeElement && document.activeElement.dataset && document.activeElement.dataset.focusKey)) render();
 }, 60 * 1000);
 
+startFocusWatcher(ctx);
 api.getState().then(applyState);

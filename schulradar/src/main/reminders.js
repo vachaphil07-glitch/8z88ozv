@@ -2,6 +2,7 @@
 // Erinnerungen als Windows-Benachrichtigung.
 const { startOfDay, toIsoDate, DAY } = require('./util/dates');
 const { isActive, isExamLike, isAppointment } = require('./status');
+const { weeklyReview, reviewText } = require('./planner');
 
 const HOUR = 3600 * 1000;
 const GRACE = 6 * HOUR; // war der PC aus, wird eine verpasste Erinnerung bis zu 6 h später nachgeholt
@@ -112,6 +113,26 @@ function dailySummary({ items, local, settings, lastSummary, now = Date.now() })
   return { date: today, title: 'Guten Morgen! Dein Überblick', body: parts.join(' · ') };
 }
 
+/** Sonntags-Rückblick: Zeitpunkt der Woche, in der now liegt (Sonntag, weeklyTime) */
+function weeklyReviewAt(settings, now = Date.now()) {
+  const r = settings.reminders || {};
+  if (!r.enabled || !r.weeklyReview) return null;
+  const [hh, mm] = parseTime(r.weeklyTime, '18:00');
+  const d = new Date(startOfDay(now));
+  d.setDate(d.getDate() + ((7 - d.getDay()) % 7)); // kommender (oder heutiger) Sonntag
+  d.setHours(hh, mm, 0, 0);
+  return d.getTime();
+}
+
+/** Ist der Rückblick jetzt fällig? Liefert {key, title, body} oder null */
+function weeklyReviewDue({ items, local, settings, focusSessions = [], lastWeekly, now = Date.now() }) {
+  const at = weeklyReviewAt(settings, now);
+  if (!at || now < at || now - at > GRACE) return null;
+  const key = toIsoDate(at);
+  if (lastWeekly === key) return null;
+  return { key, title: 'Dein Wochenrückblick', body: reviewText(weeklyReview({ items, local, focusSessions, now })) };
+}
+
 class ReminderService {
   constructor({ store, getItems, notify }) {
     this.store = store;
@@ -149,8 +170,13 @@ class ReminderService {
       data.reminders.lastSummary = summary.date;
       if (!summary.silent) this.notify(summary);
     }
-    if (reminders.length || summary) this.store.save();
+    const weekly = weeklyReviewDue({ items, local: data.local, settings, focusSessions: data.focusSessions, lastWeekly: data.reminders.lastWeekly, now });
+    if (weekly) {
+      data.reminders.lastWeekly = weekly.key;
+      this.notify({ ...weekly, view: 'learn' });
+    }
+    if (reminders.length || summary || weekly) this.store.save();
   }
 }
 
-module.exports = { ReminderService, dueReminders, plannedReminders, reminderTriggers, dailySummary };
+module.exports = { ReminderService, dueReminders, plannedReminders, reminderTriggers, dailySummary, weeklyReviewAt, weeklyReviewDue };

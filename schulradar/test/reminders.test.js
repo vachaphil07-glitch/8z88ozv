@@ -79,3 +79,15 @@ test('Handy: künftige Erinnerungen werden im Voraus geplant', () => {
   );
   assert.equal(plannedReminders({ items, local: { done: { t1: 1 }, dismissed: {} }, settings, now: at(2026, 9, 23, 12, 0) }).length, 1);
 });
+
+test('Wochenrückblick am Sonntag um 18 Uhr, einmal pro Woche', () => {
+  const { weeklyReviewDue, weeklyReviewAt } = require('../src/main/reminders');
+  const settings = { reminders: { enabled: true, weeklyReview: true, weeklyTime: '18:00' } };
+  const sun = new Date(2026, 9, 18, 18, 5).getTime(); // Sonntag
+  assert.equal(new Date(weeklyReviewAt(settings, new Date(2026, 9, 14, 9).getTime())).getDay(), 0);
+  const due = weeklyReviewDue({ items: [], local: {}, settings, now: sun });
+  assert.ok(due && /Diese Woche: 0 erledigt/.test(due.body));
+  assert.equal(weeklyReviewDue({ items: [], local: {}, settings, lastWeekly: due.key, now: sun }), null);
+  assert.equal(weeklyReviewDue({ items: [], local: {}, settings, now: new Date(2026, 9, 18, 17).getTime() }), null);
+  assert.equal(weeklyReviewDue({ items: [], local: {}, settings: { reminders: { ...settings.reminders, weeklyReview: false } }, now: sun }), null);
+});
