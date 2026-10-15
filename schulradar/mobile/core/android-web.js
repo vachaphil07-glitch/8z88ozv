@@ -225,7 +225,24 @@ async function clearOrigins(origins) {
   await Native.clearOrigins({ origins }).catch(() => {});
 }
 
+/** Google-Anmeldung im Browser des Handys; die Rückleitung nimmt der lokale Server im Plugin entgegen. */
+async function oauthLoopback({ buildUrl, timeout = 5 * 60 * 1000, doneText }) {
+  const { port } = await Native.loopbackStart();
+  const redirectUri = `http://127.0.0.1:${port}`;
+  const waiting = Native.loopbackWait({ timeout, doneText });
+  await Native.openExternal({ url: buildUrl(redirectUri) });
+  const { query } = await waiting;
+  const params = new URLSearchParams(query || '');
+  const code = params.get('code');
+  if (!code) {
+    const error = params.get('error');
+    throw new Error(error === 'access_denied' ? 'Anmeldung abgebrochen.' : `Anmeldung fehlgeschlagen (${error || 'kein Code'}).`);
+  }
+  return { code, redirectUri };
+}
+
 module.exports = {
+  oauthLoopback,
   httpFetch,
   fetchJson,
   requestManual,

@@ -52,6 +52,7 @@ class SyncManager {
       },
       global: g,
       secrets: this.scopedSecrets(id),
+      google: this.google || null,
       range: { from: addDays(today, -g.lookbackDays), to: addDays(today, g.lookaheadDays) },
       log: (msg) => this.log(id, msg),
       sample: (name, data) => this.sample(id, name, data),

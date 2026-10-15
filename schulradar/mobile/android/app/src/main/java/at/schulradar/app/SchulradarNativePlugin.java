@@ -41,13 +41,19 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
@@ -297,6 +303,97 @@ public class SchulradarNativePlugin extends Plugin {
         } catch (Exception e) {
             call.reject(e.getMessage());
         }
+    }
+
+    // ------------------------------------------------------------------ Google-Anmeldung (OAuth „Loopback“)
+    // Wie am PC: Die Anmeldung läuft im normalen Browser, Google leitet danach auf
+    // http://127.0.0.1:<port>/?code=… zurück – diesen Aufruf nimmt ein kleiner lokaler Server entgegen.
+
+    private ServerSocket loopback = null;
+
+    @PluginMethod
+    public void loopbackStart(PluginCall call) {
+        try {
+            synchronized (this) {
+                if (loopback != null) {
+                    try { loopback.close(); } catch (Exception ignored) { }
+                }
+                loopback = new ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"));
+            }
+            JSObject res = new JSObject();
+            res.put("port", loopback.getLocalPort());
+            call.resolve(res);
+        } catch (Exception e) {
+            call.reject(e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void loopbackWait(PluginCall call) {
+        final int timeout = call.getInt("timeout", 300000);
+        final String doneText = call.getString("doneText", "Fertig! Zurück zu Schulradar.");
+        final ServerSocket server;
+        synchronized (this) {
+            server = loopback;
+        }
+        if (server == null) {
+            call.reject("Nicht gestartet");
+            return;
+        }
+        pool.execute(() -> {
+            long until = System.currentTimeMillis() + timeout;
+            try {
+                while (System.currentTimeMillis() < until) {
+                    server.setSoTimeout((int) Math.max(1000, until - System.currentTimeMillis()));
+                    try (Socket socket = server.accept()) {
+                        socket.setSoTimeout(10000);
+                        BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+                        String line = in.readLine();
+                        if (line == null) continue;
+                        String[] parts = line.split(" ");
+                        String target = parts.length > 1 ? parts[1] : "/";
+                        // Browser fragen oft zusätzlich nach /favicon.ico
+                        if (!target.startsWith("/?") && !target.equals("/")) {
+                            writeHttp(socket, 404, "");
+                            continue;
+                        }
+                        boolean ok = target.contains("code=");
+                        String back = "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package="
+                            + getContext().getPackageName() + ";end";
+                        String html = "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
+                            + "<title>Schulradar</title><body style='font:17px system-ui;padding:40px 24px;text-align:center'>"
+                            + "<h2>Schulradar</h2><p>" + (ok ? doneText : "Anmeldung abgebrochen.") + "</p>"
+                            + "<p><a href='" + back + "' style='display:inline-block;margin-top:16px;padding:12px 22px;border-radius:10px;"
+                            + "background:#3b5bdb;color:#fff;text-decoration:none'>Zurück zur App</a></p></body>";
+                        writeHttp(socket, 200, html);
+                        JSObject res = new JSObject();
+                        res.put("query", target.indexOf('?') >= 0 ? target.substring(target.indexOf('?') + 1) : "");
+                        call.resolve(res);
+                        return;
+                    }
+                }
+                call.reject("Zeitüberschreitung bei der Anmeldung.");
+            } catch (SocketTimeoutException e) {
+                call.reject("Zeitüberschreitung bei der Anmeldung.");
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            } finally {
+                synchronized (SchulradarNativePlugin.this) {
+                    try { server.close(); } catch (Exception ignored) { }
+                    if (loopback == server) loopback = null;
+                }
+            }
+        });
+    }
+
+    private static void writeHttp(Socket socket, int status, String html) throws java.io.IOException {
+        byte[] body = html.getBytes(StandardCharsets.UTF_8);
+        String head = "HTTP/1.1 " + status + (status == 200 ? " OK" : " Not Found") + "\r\n"
+            + "Content-Type: text/html; charset=utf-8\r\nContent-Length: " + body.length + "\r\nConnection: close\r\n\r\n";
+        OutputStream out = socket.getOutputStream();
+        out.write(head.getBytes(StandardCharsets.UTF_8));
+        out.write(body);
+        out.flush();
     }
 
     /** Termin in der Kalender-App anlegen (z. B. Google Kalender) – ohne Kalender-Berechtigung. */

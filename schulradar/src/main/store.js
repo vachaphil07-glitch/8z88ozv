@@ -28,6 +28,9 @@ function defaultData() {
         dailySummary: true,
         summaryTime: '07:00'
       },
+      google: {
+        clientId: '' // eigene OAuth-Client-ID (Desktop-App) für Google Tasks und den Abgleich
+      },
       platforms: {
         webuntis: {
           enabled: true,
@@ -66,7 +69,6 @@ function defaultData() {
         },
         gtasks: {
           enabled: false,
-          clientId: '',
           knownLists: [], // [{id, title}] – vom letzten Abruf, für die Auswahl
           hiddenLists: [], // Listen, die nicht angezeigt werden
           defaultList: '' // Liste für neue Aufgaben ('' = Standardliste)

@@ -249,7 +249,8 @@ function registerIpc() {
   ipcMain.handle('note:delete', (_e, id) => ctrl.deleteNote(id));
   ipcMain.handle('gcal:add', (_e, url, name) => ctrl.gcalAdd(url, name));
   ipcMain.handle('gcal:remove', (_e, id) => ctrl.gcalRemove(id));
-  ipcMain.handle('gtasks:connect', (_e, opts) => ctrl.gtasksConnect(opts || {}));
+  ipcMain.handle('google:connect', (_e, opts) => ctrl.googleConnect(opts || {}));
+  ipcMain.handle('google:disconnect', () => ctrl.googleDisconnect());
   ipcMain.handle('settings:update', (_e, patch) => ctrl.updateSettings(patch || {}));
   ipcMain.handle('creds:set', (_e, source, creds) => ctrl.setCredentials(source, creds || {}));
   ipcMain.handle('platform:logout', (_e, source) => ctrl.logout(source));

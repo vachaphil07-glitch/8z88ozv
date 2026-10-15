@@ -1,6 +1,7 @@
 // Plattformen verbinden & verwalten
 import { h, icon } from '../dom.js';
 import * as L from '../logic.js';
+import { googleAccountBox } from './google.js';
 
 const STATUS_TEXT = {
   ok: 'Verbunden',
@@ -438,55 +439,12 @@ function gcalBody(ctx) {
 
 function gtasksBody(ctx, p) {
   const s = ctx.state.settings.platforms.gtasks;
-  const d = draft(ctx, 'gtasks');
-  if (ctx.state.platform === 'android') {
-    return [
-      h(
-        'div',
-        { class: 'help' },
-        'Google Tasks lässt sich derzeit nur in der PC-Version verbinden. Tipp: Aufgaben mit Datum aus Google Tasks erscheinen auch im Google Kalender – über „Google Kalender“ kommen Termine schon jetzt aufs Handy.'
-      )
-    ];
-  }
-  const connect = async () => {
-    ctx.ui.gtasksBusy = true;
-    ctx.rerender();
-    ctx.toast('Im Browser bei Google anmelden und Zugriff erlauben …');
-    const res = await ctx.api.gtasksConnect({ clientId: d.clientId ?? s.clientId, clientSecret: d.clientSecret || undefined });
-    ctx.ui.gtasksBusy = false;
-    delete d.clientSecret;
-    if (res && res.ok) ctx.toast('Google Tasks verbunden.', 'ok');
-    else ctx.toast((res && res.error) || 'Verbinden fehlgeschlagen.', 'error');
-    ctx.rerender();
-  };
+  const g = ctx.state.google || {};
+  if (!g.connected || !g.scopes.tasks) return [googleAccountBox(ctx, { purpose: 'tasks' })];
   const lists = s.knownLists || [];
   const hidden = new Set(s.hiddenLists || []);
   return [
-    p.hasOauth
-      ? h('div', { class: 'help' }, h('strong', {}, 'Verbunden. '), 'Abhaken in Schulradar hakt die Aufgabe auch in Google Tasks ab. Neue Aufgaben kannst du über „Eigene Aufgabe“ → „Speichern in: Google Tasks“ direkt dort anlegen.')
-      : h(
-          'div',
-          { class: 'help' },
-          h('strong', {}, 'Einmalige Einrichtung (ca. 5 Minuten):'),
-          steps(
-            'console.cloud.google.com öffnen, mit deinem Google-Konto anmelden und ein Projekt anlegen (z. B. „Schulradar“).',
-            '„APIs & Dienste“ → „Bibliothek“ → „Google Tasks API“ suchen und aktivieren.',
-            '„OAuth-Zustimmungsbildschirm“ einrichten: Typ „Extern“, App-Name eingeben, dich selbst unter „Testnutzer“ hinzufügen.',
-            '„Anmeldedaten“ → „Anmeldedaten erstellen“ → „OAuth-Client-ID“ → Typ „Desktop-App“.',
-            'Client-ID und Clientschlüssel hier einfügen und auf „Mit Google verbinden“ klicken.'
-          )
-        ),
-    h(
-      'div',
-      { class: 'form-row' },
-      field(ctx, 'gtasks', 'clientId', { label: 'Client-ID', value: s.clientId, placeholder: '…apps.googleusercontent.com' }),
-      field(ctx, 'gtasks', 'clientSecret', { label: 'Clientschlüssel', type: 'password', placeholder: p.hasClientSecret ? '•••••••• (gespeichert)' : 'GOCSPX-…' })
-    ),
-    h(
-      'div',
-      { class: 'form-actions' },
-      h('button', { class: 'btn btn-primary', disabled: Boolean(ctx.ui.gtasksBusy), onclick: connect }, icon('login'), ctx.ui.gtasksBusy ? 'Warte auf Google …' : p.hasOauth ? 'Neu verbinden' : 'Mit Google verbinden')
-    ),
+    h('div', { class: 'help' }, h('strong', {}, 'Verbunden. '), 'Abhaken in Schulradar hakt die Aufgabe auch in Google Tasks ab. Neue Aufgaben kannst du über „Eigene Aufgabe“ → „Speichern in: Google Tasks“ direkt dort anlegen. Die Google-Anmeldung verwaltest du unter Einstellungen → Abgleich.'),
     lists.length
       ? advanced(
           'Listen auswählen',

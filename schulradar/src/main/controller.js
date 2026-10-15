@@ -5,6 +5,7 @@
 const { connectors, list: connectorList } = require('./connectors');
 const { demoItems, demoTimetable } = require('./connectors/demo');
 const presets = require('./presets');
+const { createGoogleAuth } = require('./google');
 
 /**
  * host: {
@@ -14,6 +15,10 @@ const presets = require('./presets');
  * }
  */
 function createController({ store, secrets, sync, host, isDemo }) {
+  const google = createGoogleAuth({ store, secrets, log: (m) => sync.log('google', m) });
+  google.migrate();
+  sync.google = google;
+
   function currentItems() {
     const snap = store.snapshot();
     if (!isDemo()) return snap.items;
@@ -28,13 +33,11 @@ function createController({ store, secrets, sync, host, isDemo }) {
       name: c.name,
       color: c.color,
       description: c.description,
-      configured: c.isConfigured(s, sec),
+      configured: c.isConfigured(s, sec, google.info()),
       hasKey: sec.has('key'),
       hasPassword: sec.has('password'),
       hasToken: sec.has('token'),
-      hasGraph: sec.has('graph'),
-      hasOauth: sec.has('oauth'),
-      hasClientSecret: sec.has('clientSecret')
+      hasGraph: sec.has('graph')
     };
   }
 
@@ -59,6 +62,7 @@ function createController({ store, secrets, sync, host, isDemo }) {
       settings: snap.settings,
       syncing: demo ? [] : [...sync.running.keys()],
       platforms: connectorList.map(platformInfo),
+      google: google.info(),
       secureStorage: secrets.available(),
       schoolName: presets.schoolName,
       now: Date.now()
@@ -186,20 +190,28 @@ function createController({ store, secrets, sync, host, isDemo }) {
       return buildState();
     },
 
-    async gtasksConnect({ clientId, clientSecret } = {}) {
-      const patch = { enabled: true };
-      if (clientId !== undefined) patch.clientId = String(clientId).trim();
-      store.updateSettings({ platforms: { gtasks: patch } });
-      if (clientSecret !== undefined && clientSecret !== '') sync.scopedSecrets('gtasks').set('clientSecret', String(clientSecret).trim());
+    /** Google verbinden (gilt für Google Tasks und den Abgleich über Google Drive) */
+    async googleConnect({ clientId, clientSecret } = {}) {
+      google.setClient({ clientId, clientSecret });
       try {
-        await connectors.gtasks.connect(sync.context('gtasks'));
+        await google.connect();
+        if (!store.settings.platforms.gtasks.enabled) store.updateSettings({ platforms: { gtasks: { enabled: true } } });
         push();
-        sync.syncOne('gtasks');
+        if (!isDemo()) sync.syncOne('gtasks');
+        if (this.cloudSync) this.cloudSync.run({ reason: 'connect' });
         return { ok: true };
       } catch (err) {
         push();
         return { ok: false, error: err.message };
       }
+    },
+
+    async googleDisconnect() {
+      await google.disconnect();
+      store.updateSettings({ sync: { enabled: false } });
+      store.clearSource('gtasks');
+      push();
+      return buildState();
     },
 
     deleteOwnTask(id) {
