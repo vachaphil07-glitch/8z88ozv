@@ -1,6 +1,6 @@
 # Schulradar
 
-**Alle Aufgaben, Abgaben und Tests aus WebUntis, MS Teams, Letto, Eduvidual und LMS.at in einer Übersicht – dazu Google Kalender, Google Tasks und Notizen.**
+**Alle Aufgaben, Abgaben und Tests aus WebUntis, MS Teams, Letto, Eduvidual und LMS.at in einer Übersicht – dazu Google Kalender, Google Tasks, Notizen, Noten, Lernplan und Fokus-Timer, abgeglichen zwischen PC und Handy.**
 
 Bei uns in der Schule kommen Aufgaben, Aufträge und Testtermine über mehrere verschiedene Plattformen.
 Um sicher zu sein, dass wirklich alles erledigt ist, musste man bisher alle einzeln durchsehen.
@@ -30,9 +30,19 @@ Voreingestellt für die **HTL Hollabrunn**; für andere Schulen lassen sich alle
 - **Eigene Aufgaben** für Dinge, die nur mündlich angesagt wurden, auf Wunsch direkt in Google Tasks.
 - **Google Kalender**: private Termine (Training, Arzt, Ferien …) erscheinen neben den Schulterminen in
   Übersicht, Woche und Monat. Funktioniert auch mit Outlook, iCloud und jedem Kalender mit iCal-Adresse.
-- **Google Tasks**: Aufgaben aus allen Listen, Abhaken wirkt in beide Richtungen (derzeit PC-Version).
+- **Google Tasks**: Aufgaben aus allen Listen, Abhaken wirkt in beide Richtungen (PC und Handy).
 - **Notizen**: Stoff für Tests, Mitschriften, Ideen, mit Fach, Farbe und Anheften. Notizen lassen sich
   auch an eine Aufgabe oder einen Test hängen („Notiz“ im Eintrag).
+- **Abgleich PC ↔ Handy** über Google Drive: Häkchen, eigene Aufgaben, Notizen, eigene Noten und
+  Fokus-Zeiten sind auf beiden Geräten gleich.
+- **Noten**: Bewertungen aus Eduvidual und eine eigene Notenübersicht (1–5, gewichtet) mit Schnitt pro
+  Fach und dem Hinweis, welche Note man bei der nächsten Schularbeit für sein Ziel braucht.
+- **Lernplan**: Vor jedem Test und jeder Schularbeit schlägt Schulradar Lerneinheiten in freien Zeiten
+  vor – verteilt auf die Tage davor, rund um Stundenplan und Termine. Mit einem Klick eingeplant.
+- **Fokus-Timer** (Pomodoro 25/5, 50/10, 90/15) mit Thema, z. B. „Diplomarbeit“, und Statistik, wie viel
+  Zeit insgesamt hineingeflossen ist.
+- **Wochenrückblick** jeden Sonntag: was erledigt ist, Fokus-Zeit und was nächste Woche ansteht.
+- **Widget** für den Android-Startbildschirm: heute fällig und nächster Test.
 - **In den Kalender übernehmen**: Bei jedem Eintrag unter **Kalender** → Google Kalender, Outlook
   (Schulkonto), Yahoo, Kalenderdatei (.ics) oder am Handy direkt die Kalender-App. Unter
   *Einstellungen → Kalender* lassen sich alle kommenden Tests und Schularbeiten auf einmal exportieren.
@@ -155,18 +165,48 @@ Man kann mehrere Kalender eintragen. Die Adresse wirkt wie ein Passwort und wird
 Termine werden nur gelesen. Wiederholungen, Zeitzonen und ganztägige Termine werden richtig erkannt.
 Google aktualisiert diese Adresse mit etwas Verzögerung (meist unter einer Stunde).
 
-### Google Tasks: Aufgaben in beide Richtungen
-Google lässt Apps nur mit einer eigenen **OAuth-Client-ID** auf Google Tasks zugreifen (einmalig, kostenlos):
+### Google-Konto: Google Tasks und Abgleich PC ↔ Handy
+Google lässt Apps nur mit einer eigenen **OAuth-Client-ID** auf Google Tasks und Google Drive zugreifen
+(einmalig, kostenlos, ca. 5 Minuten):
 1. [console.cloud.google.com](https://console.cloud.google.com) öffnen und ein Projekt anlegen.
-2. *APIs & Dienste → Bibliothek* → **Google Tasks API** aktivieren.
+2. *APIs & Dienste → Bibliothek* → **Google Tasks API** und **Google Drive API** aktivieren.
 3. *OAuth-Zustimmungsbildschirm*: Typ „Extern“, App-Name eingeben, sich selbst als **Testnutzer** eintragen.
 4. *Anmeldedaten → Anmeldedaten erstellen → OAuth-Client-ID* → Typ **Desktop-App**.
-5. Client-ID und Clientschlüssel in Schulradar unter *Plattformen → Google Tasks* eintragen und
-   **Mit Google verbinden**. Die Anmeldung öffnet sich im normalen Browser.
+5. Client-ID und Clientschlüssel in Schulradar unter *Einstellungen → Abgleich* (oder *Plattformen →
+   Google Tasks*) eintragen und **Mit Google verbinden**. Die Anmeldung öffnet sich im Browser; am Handy
+   danach auf **Zurück zur App** tippen.
+6. Am Handy dieselbe Client-ID und denselben Schlüssel eintragen und mit demselben Google-Konto verbinden.
 
-Danach erscheinen alle Aufgaben (wählbar pro Liste). Abhaken in Schulradar hakt auch in Google Tasks ab und
-umgekehrt. Bei *Eigene Aufgabe* kann man „Speichern in: Google Tasks“ wählen. Google Tasks kennt nur ein
-Datum, keine Uhrzeit. Die Verbindung klappt derzeit nur in der PC-Version.
+**Google Tasks:** Alle Aufgaben erscheinen in Schulradar (wählbar pro Liste). Abhaken wirkt in beide
+Richtungen. Bei *Eigene Aufgabe* kann man „Speichern in: Google Tasks“ wählen. Google Tasks kennt nur ein
+Datum, keine Uhrzeit.
+
+**Abgleich:** Unter *Einstellungen → Abgleich* auf beiden Geräten einschalten. Schulradar legt dann eine
+Datei in einem versteckten App-Ordner deines Google Drive ab (im normalen Drive nicht sichtbar) und gleicht
+beim Öffnen, nach Änderungen und bei jedem Abruf ab. Bei Widersprüchen gewinnt die jüngste Änderung.
+Die Daten der Plattformen holt jedes Gerät selbst, Zugangsdaten werden nie abgeglichen.
+
+## Noten
+- **Eduvidual**: Bewertungen aus allen Kursen mit Gesamtwert, Prozent und Feedback der Lehrkraft.
+- **Eigene Noten**: *Noten → Note eintragen* mit Fach, Art (Schularbeit, Test, Mündlich, Mitarbeit …),
+  Note 1–5 und Gewichtung. Schulradar rechnet den gewichteten Schnitt (bis x,5 zählt die bessere Note).
+  Pro Fach lässt sich ein **Ziel** wählen; darunter steht, welche Note man bei der nächsten Schularbeit
+  (doppelt gewichtet) mindestens braucht – oder ob das Ziel schon sicher bzw. nicht mehr erreichbar ist.
+
+## Lernen: Lernplan, Fokus-Timer, Wochenrückblick
+- **Lernplan**: Für Tests und Schularbeiten der nächsten 14 Tage schlägt Schulradar 3 (Schularbeiten: 4)
+  Lerneinheiten à 45 Minuten vor – verteilt auf die Woche davor, nachmittags nach dem Unterricht
+  (Wochenende ab 10 Uhr), nicht während Terminen aus Google Kalender. **Einplanen** legt sie als eigene
+  Aufgabe „Lernen: …“ an; sie erscheinen in Übersicht und Woche, lassen sich abhaken und erinnern.
+- **Fokus-Timer**: Thema eingeben (z. B. „Diplomarbeit“), starten. Am Ende jeder Phase kommt eine
+  Benachrichtigung, auch wenn die App im Hintergrund ist. Die Statistik zeigt Zeit pro Thema in dieser
+  Woche und insgesamt.
+- **Wochenrückblick**: Sonntag um 18 Uhr als Benachrichtigung (einstellbar unter *Einstellungen →
+  Erinnerungen*), jederzeit auch in *Lernen*.
+
+## Widget (Android)
+Lange auf den Startbildschirm tippen → **Widgets** → **Schulradar**. Es zeigt, was heute fällig ist, wie
+viel überfällig ist und den nächsten Test. Ein Tipp öffnet die App.
 
 ## Kalender: Tests & Schularbeiten übernehmen
 
@@ -184,7 +224,8 @@ Datum, keine Uhrzeit. Die Verbindung klappt derzeit nur in der PC-Version.
 ## Datenschutz & Sicherheit
 
 - Schulradar hat **keinen eigenen Server**. Die App spricht nur direkt mit WebUntis, Microsoft/Teams, Letto,
-  Eduvidual, LMS.at und (falls verbunden) Google.
+  Eduvidual, LMS.at und (falls verbunden) Google. Der Abgleich liegt im versteckten App-Ordner deines
+  eigenen Google Drive.
 - Alle Daten bleiben auf dem eigenen PC: `%APPDATA%\Schulradar\schulradar-daten.json`.
 - Passwörter, Schlüssel und Tokens werden mit der **Windows-Verschlüsselung (DPAPI)** gespeichert
   (`zugangsdaten.bin`). Nur der eigene Windows-Benutzer kann sie entschlüsseln.
@@ -210,7 +251,7 @@ Schnittstellen, die auch die offiziellen Handy-Apps verwenden.
 | Strg+N | eigene Aufgabe anlegen |
 | Strg+F | suchen |
 | Strg+R / F5 | alle Plattformen jetzt abrufen |
-| Strg+1 … 6 | Übersicht, Woche, Monat, Notizen, Plattformen, Einstellungen |
+| Strg+1 … 8 | Übersicht, Woche, Monat, Lernen, Noten, Notizen, Plattformen, Einstellungen |
 | Esc | Dialog schließen |
 
 Ein Klick auf einen Eintrag zeigt Details (Beschreibung, Lehrkraft, Raum …) und öffnet ihn auf der
