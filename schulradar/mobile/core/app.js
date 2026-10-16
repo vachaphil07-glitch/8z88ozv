@@ -477,6 +477,7 @@ window.schulradar = {
   gcalRemove: call((id) => ctrl.gcalRemove(id)),
   googleConnect: call((opts) => ctrl.googleConnect(opts || {})),
   googleDisconnect: call(() => ctrl.googleDisconnect()),
+  gtasksAdd: call((t) => ctrl.gtasksAdd(t || {})),
   syncCloud: call(() => ctrl.syncCloud()),
   saveGrade: call((g) => ctrl.saveGrade(g || {})),
   studyPlan: call(() => ctrl.studyPlan()),

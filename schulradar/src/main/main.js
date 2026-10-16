@@ -254,6 +254,7 @@ function registerIpc() {
   ipcMain.handle('gcal:remove', (_e, id) => ctrl.gcalRemove(id));
   ipcMain.handle('google:connect', (_e, opts) => ctrl.googleConnect(opts || {}));
   ipcMain.handle('google:disconnect', () => ctrl.googleDisconnect());
+  ipcMain.handle('gtasks:add', (_e, t) => ctrl.gtasksAdd(t || {}));
   ipcMain.handle('cloud:sync', () => ctrl.syncCloud());
   ipcMain.handle('grade:save', (_e, g) => ctrl.saveGrade(g || {}));
   ipcMain.handle('grade:delete', (_e, id) => ctrl.deleteGrade(id));

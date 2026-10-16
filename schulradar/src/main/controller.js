@@ -3,7 +3,7 @@
 // main.js (Electron) und mobile/core (Android) reichen die Aufrufe der Oberfläche hierher weiter
 // und kümmern sich nur noch um das, was pro Gerät anders ist (Fenster, Dialoge, Teilen …).
 const { connectors, list: connectorList } = require('./connectors');
-const { demoItems, demoTimetable, demoGrades } = require('./connectors/demo');
+const { demoItems, demoTimetable, demoGrades, demoGoogleTasks, DEMO_TASK_LISTS } = require('./connectors/demo');
 const presets = require('./presets');
 const { createGoogleAuth } = require('./google');
 const { CloudSync } = require('./cloud-sync');
@@ -25,7 +25,7 @@ function createController({ store, secrets, sync, host, isDemo }) {
   function currentItems() {
     const snap = store.snapshot();
     if (!isDemo()) return snap.items;
-    return [...demoItems(), ...snap.items.filter((i) => i.source === 'own')];
+    return [...demoItems(), ...demoGoogleTasks(), ...snap.items.filter((i) => i.source === 'own')];
   }
 
   function platformInfo(c) {
@@ -69,6 +69,7 @@ function createController({ store, secrets, sync, host, isDemo }) {
       syncing: demo ? [] : [...sync.running.keys()],
       platforms: connectorList.map(platformInfo),
       google: google.info(),
+      demoTaskLists: demo ? DEMO_TASK_LISTS : null,
       secureStorage: secrets.available(),
       cloud: { ...store.data.cloud, running: Boolean(cloud.running) },
       review: weeklyReview({ items, local: snap.local, focusSessions: snap.focusSessions, now: Date.now() }),
@@ -252,6 +253,24 @@ function createController({ store, secrets, sync, host, isDemo }) {
         return { ok: true };
       } catch (err) {
         push();
+        return { ok: false, error: err.message };
+      }
+    },
+
+    /** Aufgabe direkt in einer Google-Tasks-Liste anlegen (Ansicht „Tasks“) */
+    async gtasksAdd({ listId, title, due, notes } = {}) {
+      const clean = String(title || '').trim().slice(0, 300);
+      if (!clean) return { ok: false, error: 'Titel fehlt.' };
+      try {
+        await connectors.gtasks.createTask(sync.context('gtasks'), {
+          title: clean,
+          notes: String(notes || '').slice(0, 5000),
+          due: Number.isFinite(due) ? due : null,
+          list: listId ? String(listId) : ''
+        });
+        await sync.syncOne('gtasks');
+        return { ok: true };
+      } catch (err) {
         return { ok: false, error: err.message };
       }
     },

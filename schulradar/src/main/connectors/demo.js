@@ -93,6 +93,29 @@ function demoTimetable(weekStart) {
   }));
 }
 
+const DEMO_TASK_LISTS = [
+  { id: 'allg', title: 'Allgemein' },
+  { id: 'schule', title: 'Schule' },
+  { id: 'arbeit', title: 'Arbeit' }
+];
+
+function demoGoogleTasks(now = Date.now()) {
+  const d0 = new Date(now);
+  d0.setHours(0, 0, 0, 0);
+  const day = (n) => d0.getTime() + n * 864e5;
+  const t = (list, n, title, due, extra = {}) => ({ id: `gtasks:${list}:${n}`, source: 'gtasks', type: 'task', title, course: DEMO_TASK_LISTS.find((l) => l.id === list).title, due, allDay: true, status: 'open', ...extra });
+  return [
+    t('allg', 1, 'Zimmer weiterbauen', day(0)),
+    t('allg', 2, 'Zivildienst anmelden', day(2)),
+    t('allg', 3, 'Führerschein lernen', day(-3), { status: 'done', completedAt: now - 3 * 864e5 }),
+    t('schule', 1, 'Wettbewerb anmelden', day(0), { description: 'Diplomarbeit' }),
+    t('schule', 2, 'Wirtschaft lernen', day(0)),
+    t('schule', 3, 'Werkstätten Protokoll', null),
+    t('schule', 4, 'Solidworks Konstruktion', day(-2), { status: 'done', completedAt: now - 2 * 864e5, description: 'Diplomarbeit' }),
+    t('arbeit', 1, 'Buchhaltung', day(12), { description: 'Finanzonline, Onedrive ordnen, Honorarnote aktualisieren' })
+  ];
+}
+
 function demoGrades(now = Date.now()) {
   const day = 24 * 3600 * 1000;
   return {
@@ -118,4 +141,4 @@ function demoGrades(now = Date.now()) {
   };
 }
 
-module.exports = { demoItems, demoTimetable, demoGrades, startOfWeek };
+module.exports = { demoItems, demoTimetable, demoGrades, demoGoogleTasks, DEMO_TASK_LISTS, startOfWeek };

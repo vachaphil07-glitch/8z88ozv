@@ -177,7 +177,9 @@ Google lässt Apps nur mit einer eigenen **OAuth-Client-ID** auf Google Tasks un
    danach auf **Zurück zur App** tippen.
 6. Am Handy dieselbe Client-ID und denselben Schlüssel eintragen und mit demselben Google-Konto verbinden.
 
-**Google Tasks:** Alle Aufgaben erscheinen in Schulradar (wählbar pro Liste). Abhaken wirkt in beide
+**Google Tasks:** Alle Aufgaben erscheinen in Schulradar (wählbar pro Liste) – in der Übersicht und in
+der eigenen Ansicht **Tasks**, die wie Google Tasks aussieht: eine Spalte pro Liste, gruppiert nach
+Datum, „Aufgabe hinzufügen“ direkt in der Liste und „Erledigt“ zum Aufklappen. Abhaken wirkt in beide
 Richtungen. Bei *Eigene Aufgabe* kann man „Speichern in: Google Tasks“ wählen. Google Tasks kennt nur ein
 Datum, keine Uhrzeit.
 
@@ -251,7 +253,7 @@ Schnittstellen, die auch die offiziellen Handy-Apps verwenden.
 | Strg+N | eigene Aufgabe anlegen |
 | Strg+F | suchen |
 | Strg+R / F5 | alle Plattformen jetzt abrufen |
-| Strg+1 … 8 | Übersicht, Woche, Monat, Lernen, Noten, Notizen, Plattformen, Einstellungen |
+| Strg+1 … 9 | Übersicht, Woche, Monat, Tasks, Lernen, Noten, Notizen, Plattformen, Einstellungen |
 | Esc | Dialog schließen |
 
 Ein Klick auf einen Eintrag zeigt Details (Beschreibung, Lehrkraft, Raum …) und öffnet ihn auf der

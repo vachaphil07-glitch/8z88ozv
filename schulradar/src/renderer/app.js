@@ -8,6 +8,7 @@ import { renderPlatforms } from './views/platforms.js';
 import { renderSettings } from './views/settings.js';
 import { renderNotes, openNoteDialog } from './views/notes.js';
 import { renderGrades } from './views/grades.js';
+import { renderTasks } from './views/tasks.js';
 import { renderLearn, startFocusWatcher, focusRunning } from './views/learn.js';
 import { openTaskDialog, openItemDialog, openOnboarding, confirmDialog, closeModal, toast } from './views/dialogs.js';
 import { closeCalendarMenu, closeCalendarMenuIfDetached } from './views/calendar-menu.js';
@@ -19,6 +20,7 @@ const VIEWS = {
   list: { title: 'Übersicht', icon: 'list', render: renderList, search: true },
   week: { title: 'Woche', icon: 'week', render: renderWeek, search: true },
   month: { title: 'Monat', icon: 'month', render: renderMonth, search: true },
+  tasks: { title: 'Tasks', icon: 'tasks', render: renderTasks, search: true },
   learn: { title: 'Lernen', icon: 'learn', render: renderLearn },
   grades: { title: 'Noten', icon: 'grades', render: renderGrades, search: true },
   notes: { title: 'Notizen', icon: 'note', render: renderNotes, search: true },
@@ -550,7 +552,7 @@ document.addEventListener('keydown', (e) => {
   } else if ((mod && e.key.toLowerCase() === 'r') || e.key === 'F5') {
     e.preventDefault();
     actions.sync();
-  } else if (mod && /^[1-8]$/.test(e.key)) {
+  } else if (mod && /^[1-9]$/.test(e.key)) {
     e.preventDefault();
     actions.go(Object.keys(VIEWS)[Number(e.key) - 1]);
   }
