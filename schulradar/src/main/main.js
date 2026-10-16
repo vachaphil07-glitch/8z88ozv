@@ -314,10 +314,12 @@ function registerIpc() {
 
   ipcMain.handle('calendar:save', async (_e, name, text, open) => {
     const safe = String(name || 'schulradar.ics').replace(/[\\/:*?"<>|]/g, '_');
+    // auch für Tabellen (Stundennachweis als .csv)
+    const csv = safe.endsWith('.csv');
     const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
-      title: 'Kalenderdatei speichern',
-      defaultPath: path.join(app.getPath('downloads'), safe.endsWith('.ics') ? safe : `${safe}.ics`),
-      filters: [{ name: 'Kalender (iCalendar)', extensions: ['ics'] }]
+      title: csv ? 'Tabelle speichern' : 'Kalenderdatei speichern',
+      defaultPath: path.join(app.getPath('downloads'), csv || safe.endsWith('.ics') ? safe : `${safe}.ics`),
+      filters: [csv ? { name: 'Tabelle (CSV, z. B. für Excel)', extensions: ['csv'] } : { name: 'Kalender (iCalendar)', extensions: ['ics'] }]
     });
     if (canceled || !filePath) return { ok: false };
     fs.writeFileSync(filePath, String(text || ''), 'utf8');

@@ -200,6 +200,11 @@ Die Daten der Plattformen holt jedes Gerät selbst, Zugangsdaten werden nie abge
   Lerneinheiten à 45 Minuten vor – verteilt auf die Woche davor, nachmittags nach dem Unterricht
   (Wochenende ab 10 Uhr), nicht während Terminen aus Google Kalender. **Einplanen** legt sie als eigene
   Aufgabe „Lernen: …“ an; sie erscheinen in Übersicht und Woche, lassen sich abhaken und erinnern.
+- **Stempeluhr** (z. B. für die Diplomarbeit): **Einstempeln**, wenn du anfängst, **Ausstempeln**, wenn du
+  aufhörst – dabei kurz beschreiben, was du gemacht hast (Zeiten lassen sich noch korrigieren). Die Einträge
+  stehen in einer Liste, lassen sich bearbeiten oder nachtragen und als **Stundennachweis** (CSV für Excel:
+  Datum, Beginn, Ende, Dauer, Tätigkeit, Summe) speichern. Die Uhr läuft weiter, auch wenn Schulradar
+  geschlossen wird; die Einträge werden mit dem Handy abgeglichen.
 - **Fokus-Timer**: Thema eingeben (z. B. „Diplomarbeit“), starten. Am Ende jeder Phase kommt eine
   Benachrichtigung, auch wenn die App im Hintergrund ist. Die Statistik zeigt Zeit pro Thema in dieser
   Woche und insgesamt.

@@ -390,17 +390,19 @@ function createController({ store, secrets, sync, host, isDemo }) {
     /** abgeschlossene Fokus-Einheit speichern */
     logFocus(f = {}) {
       const minutes = Math.round(Number(f.minutes));
-      if (!Number.isFinite(minutes) || minutes < 1) return { ok: false };
-      store.saveRecord(
-        'focusSessions',
-        {
-          label: String(f.label || '').trim().slice(0, 80),
-          itemId: f.itemId ? String(f.itemId).slice(0, 300) : '',
-          start: Number.isFinite(f.start) ? f.start : Date.now() - minutes * 60000,
-          minutes: Math.min(minutes, 600)
-        },
-        'focus'
-      );
+      if (!Number.isFinite(minutes) || minutes < 1) return { ok: false, error: 'Mindestens 1 Minute.' };
+      const kind = f.kind === 'stempel' ? 'stempel' : 'fokus';
+      const rec = {
+        label: String(f.label || '').trim().slice(0, 80),
+        itemId: f.itemId ? String(f.itemId).slice(0, 300) : '',
+        start: Number.isFinite(f.start) ? f.start : Date.now() - minutes * 60000,
+        // Stempeluhr: auch lange Arbeitsblöcke (bis 16 h)
+        minutes: Math.min(minutes, kind === 'stempel' ? 960 : 600),
+        kind,
+        description: String(f.description || '').trim().slice(0, 2000)
+      };
+      if (f.id) rec.id = String(f.id);
+      store.saveRecord('focusSessions', rec, 'focus');
       changed();
       return { ok: true };
     },

@@ -1,6 +1,7 @@
 // Lernen: Fokus-Timer (Pomodoro), Lernplan vor Tests und Wochenrückblick
 import { h, icon } from '../dom.js';
 import * as L from '../logic.js';
+import { openModal, closeModal, confirmDialog } from './dialogs.js';
 
 // ---------------------------------------------------------------- Fokus-Timer
 // Der Timer läuft über Zeitstempel (endAt) – er stimmt also auch, wenn das Fenster zu war oder das
@@ -83,6 +84,10 @@ function stop(ctx) {
 
 /** Phase zu Ende? (läuft jede Sekunde, egal welche Ansicht offen ist) */
 function check(ctx) {
+  if (clock.start) {
+    const el = document.getElementById('clock-elapsed');
+    if (el) el.textContent = L.fmtElapsed(Date.now() - clock.start);
+  }
   if (timer.phase === 'idle' || timer.paused || !timer.endAt) return;
   const now = Date.now();
   if (now < timer.endAt) {
@@ -113,7 +118,257 @@ export function startFocusWatcher(ctx) {
 }
 
 export function focusRunning() {
-  return timer.phase !== 'idle';
+  return timer.phase !== 'idle' || Boolean(clock.start);
+}
+
+// ---------------------------------------------------------------- Stempeluhr
+// Einstempeln merkt sich nur die Startzeit (überlebt Neustart/Schließen). Beim Ausstempeln wird die
+// Tätigkeit beschrieben und als Eintrag gespeichert (wird mit dem Handy abgeglichen).
+
+const CLOCK_KEY = 'schulradar.stempel';
+let clock = loadClock();
+
+function loadClock() {
+  try {
+    const c = JSON.parse(localStorage.getItem(CLOCK_KEY) || 'null');
+    if (c && typeof c === 'object') return c;
+  } catch (_) {
+    /* egal */
+  }
+  return { start: null, label: 'Diplomarbeit' };
+}
+
+function saveClock() {
+  try {
+    localStorage.setItem(CLOCK_KEY, JSON.stringify(clock));
+  } catch (_) {
+    /* egal */
+  }
+}
+
+function clockIn(ctx) {
+  clock = { ...clock, start: Date.now() };
+  saveClock();
+  ctx.toast(`Eingestempelt: ${clock.label || 'Arbeit'}`, 'ok');
+  ctx.rerender();
+}
+
+function timeValue(ms) {
+  return L.fmtTime(ms);
+}
+
+function dateValue(ms) {
+  const d = new Date(ms);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function combine(dateStr, timeStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [hh, mm] = timeStr.split(':').map(Number);
+  return new Date(y, m - 1, d, hh, mm).getTime();
+}
+
+/**
+ * Ausstempeln bzw. Eintrag bearbeiten/nachtragen.
+ * entry: bestehender Eintrag (Bearbeiten) oder {start, end} (Ausstempeln / Nachtragen)
+ */
+function openClockDialog(ctx, entry, { clockOut = false } = {}) {
+  const isEdit = Boolean(entry.id);
+  const start = entry.start;
+  const end = entry.end || entry.start + (Number(entry.minutes) || 0) * 60000;
+  const labels = [...new Set(['Diplomarbeit', ...(ctx.state.focusSessions || []).map((s) => s.label).filter(Boolean)])];
+  const durationEl = h('strong', { class: 'clock-duration' }, L.fmtMinutes(Math.round((end - start) / 60000)));
+  const update = (f) => {
+    const a = combine(f.date.value, f.from.value);
+    let b = combine(f.date.value, f.to.value);
+    if (b < a) b += 24 * 3600000; // über Mitternacht
+    durationEl.textContent = L.fmtMinutes(Math.round((b - a) / 60000));
+  };
+  const form = h(
+    'form',
+    {
+      class: 'form',
+      oninput: (e) => e.target.form && update(e.target.form),
+      onsubmit: async (e) => {
+        e.preventDefault();
+        const f = e.target.elements;
+        const a = combine(f.date.value, f.from.value);
+        let b = combine(f.date.value, f.to.value);
+        if (b < a) b += 24 * 3600000;
+        const minutes = Math.round((b - a) / 60000);
+        if (!f.description.value.trim()) {
+          f.description.focus();
+          ctx.toast('Bitte kurz beschreiben, was du gemacht hast.', 'warn');
+          return;
+        }
+        const res = await ctx.api.logFocus({ id: entry.id, kind: 'stempel', label: f.label.value.trim(), description: f.description.value, start: a, minutes });
+        if (res && res.ok) {
+          if (clockOut) {
+            clock = { start: null, label: f.label.value.trim() || clock.label };
+            saveClock();
+          }
+          closeModal();
+          ctx.toast(clockOut ? `Ausgestempelt – ${L.fmtMinutes(minutes)} gespeichert.` : 'Gespeichert.', 'ok');
+          ctx.rerender();
+        } else ctx.toast((res && res.error) || 'Konnte nicht speichern.', 'error');
+      }
+    },
+    h('h2', {}, clockOut ? 'Ausstempeln' : isEdit ? 'Eintrag bearbeiten' : 'Zeit nachtragen'),
+    h(
+      'label',
+      { class: 'field' },
+      h('span', { class: 'field-label' }, 'Was hast du gemacht?'),
+      h('textarea', { name: 'description', rows: 4, maxlength: 2000, autofocus: true, placeholder: 'z. B. CAD-Modell der Halterung überarbeitet, Kapitel 3 geschrieben …' }, entry.description || '')
+    ),
+    h(
+      'div',
+      { class: 'form-row' },
+      h(
+        'label',
+        { class: 'field' },
+        h('span', { class: 'field-label' }, 'Projekt'),
+        h('input', { name: 'label', value: entry.label || clock.label || 'Diplomarbeit', list: 'clock-labels', maxlength: 80 }),
+        h('datalist', { id: 'clock-labels' }, labels.map((l) => h('option', { value: l })))
+      ),
+      h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Datum'), h('input', { type: 'date', name: 'date', value: dateValue(start), required: true }))
+    ),
+    h(
+      'div',
+      { class: 'form-row' },
+      h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Von'), h('input', { type: 'time', name: 'from', value: timeValue(start), required: true })),
+      h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Bis'), h('input', { type: 'time', name: 'to', value: timeValue(end), required: true }))
+    ),
+    h('p', { class: 'muted' }, 'Dauer: ', durationEl),
+    h(
+      'div',
+      { class: 'form-actions end' },
+      isEdit
+        ? h(
+            'button',
+            {
+              type: 'button',
+              class: 'btn btn-ghost btn-danger',
+              onclick: async () => {
+                if (await confirmDialog('Eintrag löschen?', 'Der Eintrag wird endgültig gelöscht.', 'Löschen', true)) {
+                  await ctx.api.deleteFocus(entry.id);
+                  ctx.toast('Gelöscht.');
+                }
+              }
+            },
+            icon('trash'),
+            'Löschen'
+          )
+        : null,
+      clockOut
+        ? h(
+            'button',
+            {
+              type: 'button',
+              class: 'btn btn-ghost btn-danger',
+              onclick: async () => {
+                if (await confirmDialog('Verwerfen?', 'Die Zeit seit dem Einstempeln wird nicht gespeichert.', 'Verwerfen', true)) {
+                  clock = { ...clock, start: null };
+                  saveClock();
+                  ctx.rerender();
+                }
+              }
+            },
+            'Verwerfen'
+          )
+        : null,
+      h('button', { type: 'button', class: 'btn btn-ghost', onclick: () => closeModal() }, clockOut ? 'Weiterarbeiten' : 'Abbrechen'),
+      h('button', { type: 'submit', class: 'btn btn-primary' }, clockOut ? 'Ausstempeln & speichern' : 'Speichern')
+    )
+  );
+  openModal(form, { wide: true });
+}
+
+function clockCard(ctx) {
+  const running = Boolean(clock.start);
+  const entries = (ctx.state.focusSessions || []).filter((s) => s.kind === 'stempel').sort((a, b) => b.start - a.start);
+  const label = clock.label || 'Diplomarbeit';
+  const mine = entries.filter((e) => e.label === label);
+  const week = L.startOfWeek(ctx.now());
+  const total = mine.reduce((s, e) => s + (Number(e.minutes) || 0), 0);
+  const weekMin = mine.filter((e) => e.start >= week).reduce((s, e) => s + (Number(e.minutes) || 0), 0);
+  const showAll = ctx.ui.clockAll;
+  const list = showAll ? entries : entries.slice(0, 5);
+  return h(
+    'section',
+    { class: `card clock-card ${running ? 'is-running' : ''}` },
+    h('h3', { class: 'settings-title' }, icon('timer'), 'Stempeluhr'),
+    h(
+      'div',
+      { class: 'clock-main' },
+      h(
+        'div',
+        { class: 'clock-status' },
+        running
+          ? [h('span', { class: 'clock-dot' }), h('div', {}, h('strong', { id: 'clock-elapsed' }, L.fmtElapsed(ctx.now() - clock.start)), h('small', { class: 'muted' }, `${label} · seit ${L.fmtTime(clock.start)}`))]
+          : h('div', {}, h('strong', {}, 'Ausgestempelt'), h('small', { class: 'muted' }, `${label}: ${L.fmtMinutes(weekMin)} diese Woche · ${L.fmtMinutes(total)} gesamt`))
+      ),
+      running
+        ? h('button', { class: 'btn btn-primary btn-big', onclick: () => openClockDialog(ctx, { start: clock.start, end: Date.now(), label }, { clockOut: true }) }, icon('stop'), 'Ausstempeln')
+        : h('button', { class: 'btn btn-primary btn-big', onclick: () => clockIn(ctx) }, icon('play'), 'Einstempeln')
+    ),
+    running
+      ? null
+      : h(
+          'label',
+          { class: 'field clock-label' },
+          h('span', { class: 'field-label' }, 'Projekt'),
+          h('input', {
+            value: label,
+            list: 'clock-projects',
+            maxlength: 80,
+            dataset: { focusKey: 'clock.label' },
+            oninput: (e) => {
+              clock.label = e.target.value;
+              saveClock();
+            },
+            onchange: () => ctx.rerender()
+          }),
+          h('datalist', { id: 'clock-projects' }, [...new Set(['Diplomarbeit', ...entries.map((e) => e.label).filter(Boolean)])].map((l) => h('option', { value: l })))
+        ),
+    entries.length
+      ? h(
+          'ul',
+          { class: 'clock-list' },
+          list.map((e) =>
+            h(
+              'li',
+              { role: 'button', tabindex: '0', title: 'Bearbeiten', onclick: () => openClockDialog(ctx, e), onkeydown: (ev) => ev.key === 'Enter' && openClockDialog(ctx, e) },
+              h('div', { class: 'clock-when' }, h('strong', {}, L.fmtDateShort(e.start)), h('small', { class: 'muted' }, `${L.fmtTime(e.start)}–${L.fmtTime(e.start + e.minutes * 60000)}`)),
+              h('div', { class: 'clock-what' }, e.description || h('span', { class: 'muted' }, '(ohne Beschreibung)'), e.label !== label ? h('small', { class: 'muted' }, e.label) : null),
+              h('span', { class: 'clock-min' }, L.fmtMinutes(e.minutes))
+            )
+          )
+        )
+      : h('p', { class: 'muted small' }, 'Einstempeln, wenn du anfängst – beim Ausstempeln kurz beschreiben, was du gemacht hast. So entsteht nebenbei dein Arbeitsnachweis für die Diplomarbeit.'),
+    h(
+      'div',
+      { class: 'form-actions' },
+      entries.length > 5 ? h('button', { class: 'btn btn-small btn-ghost', onclick: () => ctx.actions.setUi({ clockAll: !showAll }) }, showAll ? 'Weniger' : `Alle ${entries.length} anzeigen`) : null,
+      h('button', { class: 'btn btn-small btn-ghost', onclick: () => openClockDialog(ctx, { start: Date.now() - 3600000, end: Date.now(), label }) }, icon('plus'), 'Nachtragen'),
+      mine.length
+        ? h(
+            'button',
+            {
+              class: 'btn btn-small btn-ghost',
+              title: 'Stundennachweis als Tabelle (öffnet in Excel)',
+              onclick: async () => {
+                const name = `stundennachweis-${label.toLowerCase().replace(/[^a-z0-9äöüß]+/g, '-')}.csv`;
+                const res = await ctx.api.saveCalendarFile(name, L.timesheetCsv(entries, label), false);
+                if (res && res.ok && ctx.state.platform !== 'android') ctx.toast('Stundennachweis gespeichert.', 'ok');
+              }
+            },
+            icon('download'),
+            'Stundennachweis'
+          )
+        : null
+    )
+  );
 }
 
 function timerCard(ctx) {
@@ -350,5 +605,5 @@ function reviewCard(ctx) {
 
 export function renderLearn(root, ctx) {
   startFocusWatcher(ctx);
-  root.append(h('div', { class: 'learn-grid' }, h('div', { class: 'learn-col' }, timerCard(ctx), statsCard(ctx)), h('div', { class: 'learn-col' }, planCard(ctx), reviewCard(ctx))));
+  root.append(h('div', { class: 'learn-grid' }, h('div', { class: 'learn-col' }, clockCard(ctx), timerCard(ctx), statsCard(ctx)), h('div', { class: 'learn-col' }, planCard(ctx), reviewCard(ctx))));
 }

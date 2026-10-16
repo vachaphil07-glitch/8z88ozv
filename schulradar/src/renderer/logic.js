@@ -510,3 +510,35 @@ export function fmtClock(ms) {
   const sec = total % 60;
   return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
+
+// ---------------------------------------------------------------- Stempeluhr (z. B. Diplomarbeit)
+
+/** Stundennachweis als CSV (Strichpunkt getrennt, öffnet direkt in Excel mit Umlauten) */
+export function timesheetCsv(entries, label = '') {
+  const esc = (v) => {
+    const t = String(v ?? '');
+    return /[;"\n\r]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+  };
+  const p2 = (n) => String(n).padStart(2, '0');
+  const date = (ms) => {
+    const d = new Date(ms);
+    return `${p2(d.getDate())}.${p2(d.getMonth() + 1)}.${d.getFullYear()}`;
+  };
+  const rows = [['Datum', 'Beginn', 'Ende', 'Dauer (h)', 'Projekt', 'Tätigkeit']];
+  let total = 0;
+  const sorted = [...entries].filter((e) => !label || e.label === label).sort((a, b) => a.start - b.start);
+  for (const e of sorted) {
+    const min = Number(e.minutes) || 0;
+    total += min;
+    rows.push([date(e.start), fmtTime(e.start), fmtTime(e.start + min * 60000), (min / 60).toFixed(2).replace('.', ','), e.label || '', e.description || '']);
+  }
+  rows.push(['', '', 'Summe', (total / 60).toFixed(2).replace('.', ','), '', '']);
+  return '﻿' + rows.map((r) => r.map(esc).join(';')).join('\r\n') + '\r\n';
+}
+
+/** 4530000 -> "1:15:30" (Stempeluhr) */
+export function fmtElapsed(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const p2 = (n) => String(n).padStart(2, '0');
+  return `${Math.floor(total / 3600)}:${p2(Math.floor((total % 3600) / 60))}:${p2(total % 60)}`;
+}

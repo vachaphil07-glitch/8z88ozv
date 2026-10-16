@@ -153,3 +153,19 @@ test('Fokus-Statistik und Zeitformat', () => {
   assert.equal(L.fmtClock(25 * 60000), '25:00');
   assert.equal(L.fmtClock(61500), '01:02');
 });
+
+test('Stundennachweis als CSV', () => {
+  const csv = L.timesheetCsv(
+    [
+      { label: 'Diplomarbeit', start: at(2026, 10, 16, 14, 0), minutes: 90, description: 'Konstruktion; Teil 2' },
+      { label: 'Diplomarbeit', start: at(2026, 10, 15, 9, 30), minutes: 45, description: 'Recherche "Sensoren"' },
+      { label: 'Anderes', start: at(2026, 10, 15, 9), minutes: 30 }
+    ],
+    'Diplomarbeit'
+  );
+  const lines = csv.replace('﻿', '').trim().split('\r\n');
+  assert.equal(lines[0], 'Datum;Beginn;Ende;Dauer (h);Projekt;Tätigkeit');
+  assert.equal(lines[1], '15.10.2026;09:30;10:15;0,75;Diplomarbeit;"Recherche ""Sensoren"""');
+  assert.equal(lines[2], '16.10.2026;14:00;15:30;1,50;Diplomarbeit;"Konstruktion; Teil 2"');
+  assert.equal(lines[3], ';;Summe;2,25;;');
+});

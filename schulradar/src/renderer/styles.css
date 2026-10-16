@@ -3980,3 +3980,101 @@ p {
     width: 100%;
   }
 }
+
+/* ---------------------------------------------------------------- Stempeluhr */
+
+.clock-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.clock-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.clock-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.clock-status strong {
+  display: block;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.clock-status small {
+  display: block;
+}
+
+.clock-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 4px var(--ok-soft);
+  animation: clock-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes clock-pulse {
+  50% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+}
+
+.clock-card.is-running {
+  border-color: color-mix(in srgb, var(--ok) 45%, var(--border));
+}
+
+.clock-label {
+  margin: 0;
+}
+
+.clock-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.clock-list li {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 8px 6px;
+  border-top: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13.5px;
+}
+
+.clock-list li:hover {
+  background: var(--surface-2);
+}
+
+.clock-when small,
+.clock-what small {
+  display: block;
+}
+
+.clock-what {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.clock-min {
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.clock-duration {
+  color: var(--text);
+}
