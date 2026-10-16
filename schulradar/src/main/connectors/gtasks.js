@@ -93,15 +93,28 @@ const connector = {
     const items = [];
     for (const list of lists) {
       if (hidden.has(list.id)) continue;
-      let pageToken = '';
-      for (let page = 0; page < 20; page++) {
-        const q = new URLSearchParams({ maxResults: '100', showCompleted: 'true', showHidden: 'true', completedMin });
-        if (pageToken) q.set('pageToken', pageToken);
-        const res = await api(ctx, `/lists/${encodeURIComponent(list.id)}/tasks?${q}`);
-        if (page === 0) ctx.sample(`liste_${list.title}`, res);
-        items.push(...toItems(list, res.items));
-        pageToken = res.nextPageToken;
-        if (!pageToken) break;
+      // Zwei Abfragen: Mit completedMin liefert Google NUR erledigte Aufgaben (offene haben kein
+      // Erledigt-Datum) – daher offene extra, erledigte nur aus dem eingestellten Zeitraum.
+      const queries = [
+        { showCompleted: 'false', showHidden: 'false' },
+        { showCompleted: 'true', showHidden: 'true', completedMin }
+      ];
+      const seen = new Set();
+      for (const [n, extra] of queries.entries()) {
+        let pageToken = '';
+        for (let page = 0; page < 20; page++) {
+          const q = new URLSearchParams({ maxResults: '100', ...extra });
+          if (pageToken) q.set('pageToken', pageToken);
+          const res = await api(ctx, `/lists/${encodeURIComponent(list.id)}/tasks?${q}`);
+          if (page === 0) ctx.sample(`liste_${list.title}_${n ? 'erledigt' : 'offen'}`, res);
+          for (const it of toItems(list, res.items)) {
+            if (seen.has(it.id)) continue;
+            seen.add(it.id);
+            items.push(it);
+          }
+          pageToken = res.nextPageToken;
+          if (!pageToken) break;
+        }
       }
     }
     ctx.log(`${lists.length} Listen, ${items.length} Aufgaben`);

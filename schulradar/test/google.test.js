@@ -203,3 +203,27 @@ test('Erinnerungen für Google-Kalender-Termine nur, wenn eingeschaltet', () => 
   assert.equal(reminderTriggers({ items: [item], local: { done: {} }, settings: settings(false), now }).length, 0);
   assert.equal(reminderTriggers({ items: [item], local: { done: {} }, settings: settings(true), now }).length, 1);
 });
+
+test('Google Tasks: offene und erledigte Aufgaben getrennt abfragen', async () => {
+  const calls = [];
+  const open = { id: 'o', title: 'Offen', status: 'needsAction', due: '2026-10-16T00:00:00.000Z' };
+  const done = { id: 'd', title: 'Erledigt', status: 'completed', completed: '2026-10-15T08:00:00.000Z' };
+  const ctx = {
+    settings: { knownLists: [{ id: 'L', title: 'Schule' }], hiddenLists: [] },
+    range: { from: Date.UTC(2026, 9, 1) },
+    log() {},
+    sample() {},
+    saveSettings() {},
+    google: {
+      async request(url) {
+        calls.push(url);
+        if (url.endsWith('/users/@me/lists?maxResults=100')) return { items: [{ id: 'L', title: 'Schule' }] };
+        // wie Google: mit completedMin nur Erledigte
+        return { items: url.includes('completedMin') ? [done] : [open] };
+      }
+    }
+  };
+  const res = await gtasks.sync(ctx);
+  assert.deepEqual(res.items.map((i) => [i.title, i.status]).sort(), [['Erledigt', 'done'], ['Offen', 'open']]);
+  assert.ok(calls.some((u) => u.includes('showCompleted=false') && !u.includes('completedMin')));
+});
